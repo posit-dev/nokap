@@ -36,6 +36,7 @@ extra = ["Pillow>=10.2.0"]
 dev = [
     "pytest>=7.0",
     "pytest-cov>=3.0",
+    "pytest-timeout>=2.0",
     "pyright>=1.1",
     "ruff>=0.4",
 ]
