@@ -162,3 +162,11 @@ class CDPConnection:
         self._pending.clear()
 
 
+class CDPError(Exception):
+    """Error returned by Chrome DevTools Protocol."""
+
+    def __init__(self, message: str, error_data: dict[str, Any] | None = None) -> None:
+        super().__init__(message)
+        self.error_data = error_data or {}
+
+
