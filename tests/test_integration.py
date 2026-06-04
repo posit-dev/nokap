@@ -1,8 +1,6 @@
 import pytest
-from pathlib import Path
 
 import gun
-
 
 # Skip all tests if Chrome is not available
 try:
