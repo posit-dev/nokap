@@ -44,3 +44,20 @@ class ClipRect:
         }
 
 
+@dataclass(frozen=True)
+class Expand:
+    """Padding to add around a selector's bounding box."""
+
+    top: int = 0
+    right: int = 0
+    bottom: int = 0
+    left: int = 0
+
+    @classmethod
+    def from_value(cls, value: int | tuple[int, int, int, int]) -> Expand:
+        """Create from a single int (all sides) or 4-tuple (top, right, bottom, left)."""
+        if isinstance(value, int):
+            return cls(top=value, right=value, bottom=value, left=value)
+        return cls(top=value[0], right=value[1], bottom=value[2], left=value[3])
+
+
