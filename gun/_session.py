@@ -95,3 +95,37 @@ class Session:
         finally:
             self._cdp.off("Page.loadEventFired", on_load)
 
+    def set_viewport(
+        self,
+        width: int,
+        height: int,
+        device_scale_factor: float = 1.0,
+        mobile: bool = False,
+    ) -> None:
+        """
+        Set the viewport dimensions.
+
+        Parameters
+        ----------
+        width
+            Viewport width in pixels.
+        height
+            Viewport height in pixels.
+        device_scale_factor
+            Device scale factor (e.g., 2 for retina).
+        mobile
+            Whether to emulate a mobile device.
+        """
+        self._width = width
+        self._height = height
+        self._device_scale_factor = device_scale_factor
+        self._send(
+            "Emulation.setDeviceMetricsOverride",
+            {
+                "width": width,
+                "height": height,
+                "deviceScaleFactor": device_scale_factor,
+                "mobile": mobile,
+            },
+        )
+
