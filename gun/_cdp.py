@@ -9,6 +9,8 @@ from typing import Any
 import websockets
 import websockets.asyncio.client
 
+from ._errors import CDPError, ConnectionError_
+
 
 class CDPConnection:
     """
@@ -59,7 +61,10 @@ class CDPConnection:
                     if future and not future.done():
                         if "error" in msg:
                             future.set_exception(
-                                CDPError(msg["error"].get("message", "Unknown CDP error"), msg["error"])
+                                CDPError(
+                                    msg["error"].get("message", "Unknown CDP error"),
+                                    msg["error"],
+                                )
                             )
                         else:
                             future.set_result(msg.get("result", {}))
@@ -75,7 +80,9 @@ class CDPConnection:
                 # Resolve all pending futures with an error
                 for future in self._pending.values():
                     if not future.done():
-                        future.set_exception(ConnectionError("WebSocket connection closed unexpectedly"))
+                        future.set_exception(
+                            ConnectionError_("WebSocket connection closed unexpectedly")
+                        )
                 self._pending.clear()
 
     async def send(
@@ -161,13 +168,10 @@ class CDPConnection:
                 future.cancel()
         self._pending.clear()
 
-
-class CDPError(Exception):
-    """Error returned by Chrome DevTools Protocol."""
-
-    def __init__(self, message: str, error_data: dict[str, Any] | None = None) -> None:
-        super().__init__(message)
-        self.error_data = error_data or {}
+    @property
+    def is_connected(self) -> bool:
+        """Check if the WebSocket connection is open."""
+        return self._ws is not None and not self._closed
 
 
 class SyncCDP:
@@ -233,7 +237,9 @@ class SyncCDP:
         """Send a CDP command synchronously and return the result."""
         if self._connection is None:
             raise RuntimeError("Not connected. Call connect() first.")
-        return self._run_coroutine(self._connection.send(method, params, session_id, timeout))
+        return self._run_coroutine(
+            self._connection.send(method, params, session_id, timeout)
+        )
 
     def on(self, event: str, callback: Callable[[dict[str, Any]], None]) -> None:
         """Register a listener for a CDP event."""
