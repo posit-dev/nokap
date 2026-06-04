@@ -198,3 +198,54 @@ class Session:
             height=result["height"],
         )
 
+    def get_elements_union_bounds(self, selectors: list[str]) -> ClipRect:
+        """
+        Get the union bounding box of all elements matched by the given selectors.
+
+        Parameters
+        ----------
+        selectors
+            List of CSS selectors to match.
+
+        Returns
+        -------
+        ClipRect
+            The union bounding rectangle encompassing all matched elements.
+        """
+        selector_array = json.dumps(selectors) if selectors else "[]"
+        js = f"""
+        (() => {{
+            const selectors = {selector_array};
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            let found = false;
+            for (const sel of selectors) {{
+                const els = document.querySelectorAll(sel);
+                for (const el of els) {{
+                    const rect = el.getBoundingClientRect();
+                    if (rect.width === 0 && rect.height === 0) continue;
+                    found = true;
+                    minX = Math.min(minX, rect.x);
+                    minY = Math.min(minY, rect.y);
+                    maxX = Math.max(maxX, rect.x + rect.width);
+                    maxY = Math.max(maxY, rect.y + rect.height);
+                }}
+            }}
+            if (!found) return null;
+            return {{ x: minX, y: minY, width: maxX - minX, height: maxY - minY }};
+        }})()
+        """
+        result = self.evaluate(js)
+        if result is None:
+            raise ValueError(f"No elements match selectors: {selectors!r}")
+        return ClipRect(
+            x=result["x"],
+            y=result["y"],
+            width=result["width"],
+            height=result["height"],
+        )
+
+    def set_user_agent(self, user_agent: str) -> None:
+        """Set a custom User-Agent string."""
+        self._send("Network.enable")
+        self._send("Network.setUserAgentOverride", {"userAgent": user_agent})
+
