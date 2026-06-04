@@ -78,3 +78,87 @@ class CDPConnection:
                         future.set_exception(ConnectionError("WebSocket connection closed unexpectedly"))
                 self._pending.clear()
 
+    async def send(
+        self,
+        method: str,
+        params: dict[str, Any] | None = None,
+        session_id: str | None = None,
+        timeout: float | None = None,
+    ) -> dict[str, Any]:
+        """
+        Send a CDP command and wait for the response.
+
+        Parameters
+        ----------
+        method
+            The CDP method name (e.g., "Page.navigate").
+        params
+            Parameters for the CDP command.
+        session_id
+            Optional session ID for session-scoped commands.
+        timeout
+            Override the default timeout for this command.
+
+        Returns
+        -------
+        dict
+            The result from the CDP response.
+
+        Raises
+        ------
+        CDPError
+            If the CDP command returns an error.
+        asyncio.TimeoutError
+            If the command times out.
+        """
+        if self._ws is None:
+            raise RuntimeError("Not connected. Call connect() first.")
+
+        self._cmd_id += 1
+        cmd_id = self._cmd_id
+
+        msg: dict[str, Any] = {"id": cmd_id, "method": method}
+        if params:
+            msg["params"] = params
+        if session_id:
+            msg["sessionId"] = session_id
+
+        loop = asyncio.get_event_loop()
+        future: asyncio.Future[dict[str, Any]] = loop.create_future()
+        self._pending[cmd_id] = future
+
+        await self._ws.send(json.dumps(msg))
+
+        return await asyncio.wait_for(future, timeout=timeout or self._timeout)
+
+    def on(self, event: str, callback: Callable[[dict[str, Any]], None]) -> None:
+        """Register a listener for a CDP event."""
+        if event not in self._event_listeners:
+            self._event_listeners[event] = []
+        self._event_listeners[event].append(callback)
+
+    def off(self, event: str, callback: Callable[[dict[str, Any]], None]) -> None:
+        """Remove a listener for a CDP event."""
+        listeners = self._event_listeners.get(event, [])
+        if callback in listeners:
+            listeners.remove(callback)
+
+    async def close(self) -> None:
+        """Close the WebSocket connection."""
+        self._closed = True
+        if self._recv_task and not self._recv_task.done():
+            self._recv_task.cancel()
+            try:
+                await self._recv_task
+            except asyncio.CancelledError:
+                pass
+        if self._ws:
+            await self._ws.close()
+            self._ws = None
+        # Cancel any remaining pending futures
+        for future in self._pending.values():
+            if not future.done():
+                future.cancel()
+        self._pending.clear()
+
+
