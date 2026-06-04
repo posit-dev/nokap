@@ -1,0 +1,153 @@
+---
+title: "Error Handling"
+guide-section: "Advanced Usage"
+tags: [Errors]
+---
+
+# Error Handling
+
+nokap provides a clear exception hierarchy so you can catch and respond to specific failure modes.
+
+## Exception Hierarchy
+
+All nokap exceptions inherit from `NokapError`, making it easy to catch any nokap-specific error:
+
+```
+NokapError
+├── ChromeNotFoundError   # Chrome binary not found
+├── ChromeStartError      # Chrome failed to start
+├── ConnectionError_      # WebSocket connection failed
+├── NavigationError       # Page navigation failed
+├── PageLoadTimeout       # Page didn't load in time
+├── SelectorError         # CSS selector matched nothing
+└── CDPError              # Chrome DevTools Protocol error
+```
+
+## Catching All Errors
+
+```{python}
+#| eval: false
+import nokap
+from nokap import NokapError
+
+try:
+    nokap.webshot("https://example.com", "out.png")
+except NokapError as e:
+    print(f"nokap error: {e}")
+```
+
+## Specific Error Handling
+
+### ChromeNotFoundError
+
+Raised when nokap cannot locate a Chrome or Chromium binary:
+
+```{python}
+#| eval: false
+from nokap import ChromeNotFoundError
+
+try:
+    nokap.webshot("https://example.com", "out.png")
+except ChromeNotFoundError:
+    print("Please install Chrome or set CHROME_PATH")
+```
+
+**Fix:** Install Chrome/Chromium, or set the `CHROME_PATH` environment variable.
+
+### ChromeStartError
+
+Raised when Chrome is found but fails to start (e.g., missing shared libraries on Linux):
+
+```{python}
+#| eval: false
+from nokap import ChromeStartError
+
+try:
+    nokap.webshot("https://example.com", "out.png")
+except ChromeStartError as e:
+    print(f"Chrome failed to start: {e}")
+    print(f"Chrome stderr: {e.stderr}")
+```
+
+**Fix:** Check that Chrome runs from the command line. On Linux CI, you may need `--no-sandbox` (nokap sets this automatically).
+
+### NavigationError
+
+Raised when page navigation fails (e.g., DNS resolution failure, invalid URL):
+
+```{python}
+#| eval: false
+from nokap import NavigationError
+
+try:
+    nokap.webshot("https://nonexistent.invalid", "out.png")
+except NavigationError as e:
+    print(f"Failed to navigate to: {e.url}")
+    print(f"Reason: {e.reason}")
+```
+
+### PageLoadTimeout
+
+Raised when a page doesn't finish loading within the timeout period:
+
+```{python}
+#| eval: false
+from nokap import PageLoadTimeout
+
+try:
+    nokap.webshot("https://slow-site.example.com", "out.png")
+except PageLoadTimeout as e:
+    print(f"Timed out after {e.timeout}s loading: {e.url}")
+```
+
+### SelectorError
+
+Raised when a CSS selector matches no elements on the page:
+
+```{python}
+#| eval: false
+from nokap import SelectorError
+
+try:
+    nokap.webshot("page.html", "out.png", selector="#missing")
+except SelectorError as e:
+    print(f"Selector not found: {e.selector}")
+```
+
+**Fix:** Check that the selector matches an element in the loaded page. Use browser DevTools to verify.
+
+### CDPError
+
+Raised when Chrome returns an error response to a CDP command:
+
+```{python}
+#| eval: false
+from nokap import CDPError
+
+try:
+    nokap.webshot("https://example.com", "out.png")
+except CDPError as e:
+    print(f"CDP protocol error: {e}")
+```
+
+## Recovery Pattern
+
+nokap automatically recovers from stale connections. If Chrome crashes between calls, the next `webshot()` or `from_html()` call will relaunch Chrome transparently:
+
+```{python}
+#| eval: false
+import nokap
+
+# First call launches Chrome
+nokap.webshot("https://example.com", "first.png")
+
+# Simulate Chrome dying
+nokap.close()
+
+# Next call relaunches automatically
+nokap.webshot("https://example.com", "second.png")  # Works fine
+```
+
+## Next Steps
+
+- [Performance Tips](22-performance-tips.qmd) — Optimize for high-throughput capture
