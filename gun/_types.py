@@ -23,3 +23,24 @@ PAPER_SIZES: dict[str, tuple[float, float]] = {
 }
 
 
+@dataclass(frozen=True)
+class ClipRect:
+    """A rectangle defining a capture region."""
+
+    x: float
+    y: float
+    width: float
+    height: float
+    scale: float = 1.0
+
+    def to_cdp(self) -> dict[str, float]:
+        """Convert to CDP clip parameter format."""
+        return {
+            "x": self.x,
+            "y": self.y,
+            "width": self.width,
+            "height": self.height,
+            "scale": self.scale,
+        }
+
+
