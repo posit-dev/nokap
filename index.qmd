@@ -1,0 +1,60 @@
+# nokap
+
+**nokap** captures screenshots and PDFs from web pages (or local HTML) using headless Chrome via the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). It doesn't need Selenium or Playwright. We use just one lightweight dependency (`websockets`).
+
+## Install and Go
+
+Get **nokap** from PyPI and start capturing screenshots immediately:
+
+```bash
+pip install nokap
+```
+
+Then in Python:
+
+```python
+import nokap
+
+# Screenshot a URL
+nokap.webshot("https://example.com", "example.png")
+
+# From HTML string (perfect for table libraries)
+html = "<h1>Hello, world!</h1>"
+nokap.from_html(html, "hello.png")
+```
+
+Or from the command line:
+
+```bash
+nokap webshot https://example.com screenshot.png
+nokap from-html report.html report.png --selector "table" --zoom 2
+```
+
+## Why nokap?
+
+|  |  |
+|---|---|
+| **Zero heavyweight deps** | No Selenium, no Playwright — just `websockets` and Chrome |
+| **Screenshots** | PNG, JPEG, WebP via CDP `Page.captureScreenshot` |
+| **PDF generation** | Configurable page size, margins, orientation |
+| **CSS selectors** | Capture specific elements or unions of multiple selectors |
+| **Retina quality** | Zoom/scale for 2× or 3× resolution images |
+| **CLI included** | `nokap webshot` and `nokap from-html` commands |
+| **Jupyter safe** | Works in notebooks without event loop conflicts |
+
+: {tbl-colwidths="[30, 70]"}
+
+## Configuration
+
+| Environment Variable | Purpose |
+|---------------------|---------|
+| `CHROME_PATH` | Override Chrome binary location |
+
+## Requirements
+
+- Python ≥ 3.10
+- Chrome or Chromium installed on the system
+
+## License
+
+MIT
