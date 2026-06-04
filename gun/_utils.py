@@ -28,3 +28,11 @@ def is_url(s: str) -> bool:
     return s.startswith(("http://", "https://", "file://"))
 
 
+def current_platform() -> str:
+    """Return normalized platform name: 'macos', 'linux', or 'windows'."""
+    system = platform.system().lower()
+    if system == "darwin":
+        return "macos"
+    if system == "windows":
+        return "windows"
+    return "linux"
