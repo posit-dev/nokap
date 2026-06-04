@@ -1,11 +1,12 @@
 from __future__ import annotations
 
-import asyncio
+import json
 import time
 from typing import Any
 
 from ._cdp import SyncCDP
-from ._types import ClipRect, Expand
+from ._errors import NavigationError, PageLoadTimeout, SelectorError
+from ._types import ClipRect
 
 
 class Session:
@@ -57,7 +58,9 @@ class Session:
         # Set viewport
         self.set_viewport(self._width, self._height)
 
-    def _send(self, method: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
+    def _send(
+        self, method: str, params: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
         """Send a command scoped to this session."""
         return self._cdp.send(method, params, session_id=self._session_id)
 
@@ -83,7 +86,7 @@ class Session:
         try:
             result = self._send("Page.navigate", {"url": url})
             if "errorText" in result:
-                raise RuntimeError(f"Navigation failed: {result['errorText']}")
+                raise NavigationError(url, result["errorText"])
 
             # Wait for load event
             deadline = time.monotonic() + timeout
@@ -91,7 +94,7 @@ class Session:
                 time.sleep(0.05)
 
             if not load_fired["done"]:
-                raise TimeoutError(f"Page load timed out after {timeout}s: {url}")
+                raise PageLoadTimeout(url, timeout)
         finally:
             self._cdp.off("Page.loadEventFired", on_load)
 
@@ -190,7 +193,7 @@ class Session:
         """
         result = self.evaluate(js)
         if result is None:
-            raise ValueError(f"No element matches selector: {selector!r}")
+            raise SelectorError(selector)
         return ClipRect(
             x=result["x"],
             y=result["y"],
@@ -236,7 +239,7 @@ class Session:
         """
         result = self.evaluate(js)
         if result is None:
-            raise ValueError(f"No elements match selectors: {selectors!r}")
+            raise SelectorError(", ".join(selectors))
         return ClipRect(
             x=result["x"],
             y=result["y"],
@@ -269,10 +272,4 @@ class Session:
 
 def _js_string(s: str) -> str:
     """Escape a Python string for safe use in JavaScript."""
-    import json as json_mod
-
-    return json_mod.dumps(s)
-
-
-# We need the json import at module level for get_elements_union_bounds
-import json
+    return json.dumps(s)
