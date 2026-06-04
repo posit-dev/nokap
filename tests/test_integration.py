@@ -1,10 +1,10 @@
 import pytest
 
-import gun
+import nokap
 
 # Skip all tests if Chrome is not available
 try:
-    gun.find_chrome()
+    nokap.find_chrome()
     HAS_CHROME = True
 except RuntimeError:
     HAS_CHROME = False
@@ -16,13 +16,13 @@ pytestmark = pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed")
 def cleanup():
     """Ensure browser is closed after each test."""
     yield
-    gun.close()
+    nokap.close()
 
 
 class TestWebshot:
     def test_screenshot_url(self, tmp_path):
         out = tmp_path / "example.png"
-        result = gun.webshot("https://example.com", out)
+        result = nokap.webshot("https://example.com", out)
         assert result == out
         assert out.exists()
         assert out.stat().st_size > 0
@@ -31,7 +31,7 @@ class TestWebshot:
         html_file = tmp_path / "test.html"
         html_file.write_text("<html><body><h1>Hello</h1></body></html>")
         out = tmp_path / "test.png"
-        result = gun.webshot(html_file, out)
+        result = nokap.webshot(html_file, out)
         assert result == out
         assert out.exists()
 
@@ -42,19 +42,19 @@ class TestWebshot:
             "background:red;'>Box</div></body></html>"
         )
         out = tmp_path / "test.png"
-        result = gun.webshot(html_file, out, selector="#target")
+        result = nokap.webshot(html_file, out, selector="#target")
         assert result == out
         assert out.exists()
 
     def test_screenshot_jpeg(self, tmp_path):
         out = tmp_path / "example.jpg"
-        result = gun.webshot("https://example.com", out)
+        result = nokap.webshot("https://example.com", out)
         assert result == out
         assert out.exists()
 
     def test_pdf(self, tmp_path):
         out = tmp_path / "example.pdf"
-        result = gun.webshot("https://example.com", out)
+        result = nokap.webshot("https://example.com", out)
         assert result == out
         assert out.exists()
         # PDF files start with %PDF
@@ -64,7 +64,7 @@ class TestWebshot:
 class TestFromHtml:
     def test_basic_html(self, tmp_path):
         out = tmp_path / "test.png"
-        result = gun.from_html("<h1>Hello World</h1>", out)
+        result = nokap.from_html("<h1>Hello World</h1>", out)
         assert result == out
         assert out.exists()
 
@@ -76,19 +76,19 @@ class TestFromHtml:
         </body></html>
         """
         out = tmp_path / "table.png"
-        result = gun.from_html(html, out, selector="table")
+        result = nokap.from_html(html, out, selector="table")
         assert result == out
         assert out.exists()
 
     def test_html_with_zoom(self, tmp_path):
         out = tmp_path / "zoomed.png"
-        result = gun.from_html("<h1>Big</h1>", out, zoom=2)
+        result = nokap.from_html("<h1>Big</h1>", out, zoom=2)
         assert result == out
         assert out.exists()
 
     def test_html_to_pdf(self, tmp_path):
         out = tmp_path / "test.pdf"
-        result = gun.from_html("<h1>PDF Test</h1>", out)
+        result = nokap.from_html("<h1>PDF Test</h1>", out)
         assert result == out
         assert out.read_bytes()[:4] == b"%PDF"
 
@@ -104,7 +104,7 @@ class TestGreatTables:
 
         html = GT(exibble).as_raw_html(make_page=True, all_important=True)
         out = tmp_path / "gt_table.png"
-        result = gun.from_html(html, out, selector="table", zoom=2, expand=5)
+        result = nokap.from_html(html, out, selector="table", zoom=2, expand=5)
         assert result == out
         assert out.exists()
         # A rendered GT table should produce a substantial image

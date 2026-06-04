@@ -8,7 +8,7 @@ help: ## Show this help message
 .PHONY: test
 test: ## Run tests
 	@pytest tests \
-		--cov=gun \
+		--cov=nokap \
 		--cov-report=term-missing \
 		--durations 10
 
@@ -34,7 +34,7 @@ check-format: ## Check code formatting without making changes
 
 .PHONY: type-check
 type-check: ## Run type checking with pyright
-	@pyright gun
+	@pyright nokap
 
 .PHONY: check
 check: lint type-check test ## Run all checks (lint, type-check, test)

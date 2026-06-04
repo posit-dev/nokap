@@ -1,7 +1,7 @@
 import os
 from unittest.mock import patch
 
-from gun._browser import find_chrome
+from nokap._browser import find_chrome
 
 
 def test_find_chrome_env_var(tmp_path):

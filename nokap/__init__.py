@@ -13,8 +13,8 @@ from ._errors import (
     ChromeNotFoundError,
     ChromeStartError,
     ConnectionError_,
-    GunError,
     NavigationError,
+    NokapError,
     PageLoadTimeout,
     SelectorError,
 )
@@ -31,7 +31,7 @@ __all__ = [
     "find_chrome",
     "Chrome",
     "Session",
-    "GunError",
+    "NokapError",
     "CDPError",
     "ChromeNotFoundError",
     "ChromeStartError",

@@ -3,11 +3,11 @@ from __future__ import annotations
 from typing import Any
 
 
-class GunError(Exception):
-    """Base exception for all gun errors."""
+class NokapError(Exception):
+    """Base exception for all nokap errors."""
 
 
-class ChromeNotFoundError(GunError):
+class ChromeNotFoundError(NokapError):
     """Raised when Chrome/Chromium cannot be found on the system."""
 
     def __init__(self, message: str | None = None) -> None:
@@ -20,7 +20,7 @@ class ChromeNotFoundError(GunError):
         )
 
 
-class ChromeStartError(GunError):
+class ChromeStartError(NokapError):
     """Raised when Chrome fails to start or report its DevTools URL."""
 
     def __init__(self, message: str, stderr: str = "") -> None:
@@ -29,14 +29,14 @@ class ChromeStartError(GunError):
         self.stderr = stderr
 
 
-class ConnectionError_(GunError):
+class ConnectionError_(NokapError):
     """Raised when the CDP WebSocket connection fails or drops."""
 
     def __init__(self, message: str = "CDP WebSocket connection failed") -> None:
         super().__init__(message)
 
 
-class NavigationError(GunError):
+class NavigationError(NokapError):
     """Raised when page navigation fails."""
 
     def __init__(self, url: str, reason: str = "") -> None:
@@ -48,7 +48,7 @@ class NavigationError(GunError):
         self.reason = reason
 
 
-class PageLoadTimeout(GunError):
+class PageLoadTimeout(NokapError):
     """Raised when a page does not finish loading within the timeout."""
 
     def __init__(self, url: str, timeout: float) -> None:
@@ -57,7 +57,7 @@ class PageLoadTimeout(GunError):
         self.timeout = timeout
 
 
-class SelectorError(GunError):
+class SelectorError(NokapError):
     """Raised when a CSS selector matches no elements."""
 
     def __init__(self, selector: str) -> None:
@@ -65,7 +65,7 @@ class SelectorError(GunError):
         self.selector = selector
 
 
-class CDPError(GunError):
+class CDPError(NokapError):
     """Error returned by the Chrome DevTools Protocol."""
 
     def __init__(self, message: str, error_data: dict[str, Any] | None = None) -> None:

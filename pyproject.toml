@@ -5,10 +5,10 @@ build-backend = "setuptools.build_meta"
 [tool.setuptools_scm]
 
 [tool.setuptools.packages.find]
-include = ["gun"]
+include = ["nokap"]
 
 [project]
-name = "gun"
+name = "nokap"
 description = "Capture screenshots and PDFs from web pages using headless Chrome via CDP."
 readme = "README.md"
 keywords = ["screenshot", "chrome", "cdp", "pdf", "headless", "webshot"]
@@ -42,13 +42,13 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/rich-iannone/gun"
-Repository = "https://github.com/rich-iannone/gun"
-Documentation = "https://rich-iannone.github.io/gun/"
-"Bug Tracker" = "https://github.com/rich-iannone/gun/issues"
+Homepage = "https://github.com/rich-iannone/nokap"
+Repository = "https://github.com/rich-iannone/nokap"
+Documentation = "https://rich-iannone.github.io/nokap/"
+"Bug Tracker" = "https://github.com/rich-iannone/nokap/issues"
 
 [tool.pyright]
-include = ["gun"]
+include = ["nokap"]
 pythonVersion = "3.10"
 typeCheckingMode = "strict"
 reportPrivateUsage = false

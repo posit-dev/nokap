@@ -1,4 +1,4 @@
-from gun._types import ClipRect, Expand, PDFOptions
+from nokap._types import ClipRect, Expand, PDFOptions
 
 
 def test_clip_rect_to_cdp():

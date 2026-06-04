@@ -1,6 +1,6 @@
 from pathlib import Path
 
-from gun._utils import current_platform, file_url, find_open_port, is_url
+from nokap._utils import current_platform, file_url, find_open_port, is_url
 
 
 def test_file_url_absolute_path():
