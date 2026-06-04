@@ -1,0 +1,117 @@
+---
+title: "Screenshots"
+guide-section: "Core Concepts"
+tags: [Screenshots, Tutorial]
+---
+
+# Screenshots
+
+A deep dive into image capture options: formats, viewport, zoom, delay, and more.
+
+## Image Formats
+
+nokap supports three image formats, determined by the output file extension:
+
+| Extension | Format | Notes |
+|-----------|--------|-------|
+| `.png` | PNG | Default. Lossless, supports transparency |
+| `.jpg` / `.jpeg` | JPEG | Lossy compression, smaller files |
+| `.webp` | WebP | Modern format, excellent compression |
+
+```{python}
+#| eval: false
+import nokap
+
+nokap.webshot("https://example.com", "page.png")   # PNG
+nokap.webshot("https://example.com", "page.jpg")   # JPEG
+nokap.webshot("https://example.com", "page.webp")  # WebP
+```
+
+## Viewport Size
+
+Control the browser viewport dimensions with `vwidth` and `vheight`:
+
+```{python}
+#| eval: false
+# Mobile viewport
+nokap.webshot("https://example.com", "mobile.png", vwidth=375, vheight=812)
+
+# Desktop widescreen
+nokap.webshot("https://example.com", "wide.png", vwidth=1920, vheight=1080)
+```
+
+The defaults are `992×744` pixels, matching common screenshot tool conventions.
+
+## Zoom / Scale Factor
+
+The `zoom` parameter scales the output resolution without changing the viewport layout:
+
+```{python}
+#| eval: false
+# Standard resolution
+nokap.webshot("https://example.com", "1x.png", zoom=1)
+
+# Retina (2×)
+nokap.webshot("https://example.com", "2x.png", zoom=2)
+
+# Triple resolution
+nokap.webshot("https://example.com", "3x.png", zoom=3)
+```
+
+A `zoom=2` produces an image that is 2× the viewport dimensions in pixels — ideal for HiDPI displays.
+
+## Delay
+
+The `delay` parameter adds a wait (in seconds) after the page load event fires, before capturing. This is useful for pages with animations or lazy-loaded content:
+
+```{python}
+#| eval: false
+# Wait 1 second for animations to complete
+nokap.webshot("https://example.com", "animated.png", delay=1.0)
+
+# No delay (capture immediately after load)
+nokap.webshot("https://example.com", "instant.png", delay=0)
+```
+
+The default delay is `0.2` seconds.
+
+## Custom User-Agent
+
+Override the browser's User-Agent string:
+
+```{python}
+#| eval: false
+nokap.webshot(
+    "https://example.com",
+    "bot.png",
+    useragent="MyBot/1.0"
+)
+```
+
+## From HTML Strings
+
+The `from_html()` function writes an HTML string to a temp file and screenshots it:
+
+```{python}
+#| eval: false
+html = "<h1 style='color: navy;'>Generated Report</h1>"
+nokap.from_html(html, "report.png")
+```
+
+All `webshot()` options are available as keyword arguments:
+
+```{python}
+#| eval: false
+nokap.from_html(
+    html,
+    "report.png",
+    zoom=2,
+    vwidth=800,
+    delay=0.5,
+)
+```
+
+## Next Steps
+
+- [Selectors and Clipping](11-selectors-and-clipping.qmd) — Capture specific page elements
+- [PDF Generation](12-pdf-generation.qmd) — Generate PDFs with full layout control
