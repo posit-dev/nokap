@@ -1,0 +1,128 @@
+---
+title: "Quick Start"
+guide-section: "Getting Started"
+tags: [Tutorial, Screenshots]
+---
+
+# Quick Start
+
+This guide walks you through taking your first screenshot with nokap in under a minute.
+
+## Your First Screenshot
+
+The simplest use of nokap is capturing a web page as a PNG:
+
+```{python}
+#| eval: false
+import nokap
+
+nokap.webshot("https://example.com", "example.png")
+```
+
+This launches headless Chrome (if not already running), navigates to the URL, captures the full page, and saves it as a PNG file.
+
+## Screenshot a Local HTML File
+
+You can also capture local HTML files:
+
+```{python}
+#| eval: false
+nokap.webshot("page.html", "page.png")
+```
+
+nokap automatically converts local paths to `file://` URLs.
+
+## From an HTML String
+
+The `from_html()` function is designed for rendering HTML content directly — perfect for libraries that generate HTML:
+
+```{python}
+#| eval: false
+html = """
+<html>
+<body style="font-family: system-ui; padding: 2rem;">
+  <h1>Hello, nokap!</h1>
+  <p>This is rendered from a string.</p>
+</body>
+</html>
+"""
+
+nokap.from_html(html, "hello.png")
+```
+
+## Capture a Specific Element
+
+Use a CSS selector to capture just one element:
+
+```{python}
+#| eval: false
+nokap.webshot(
+    "https://example.com",
+    "heading.png",
+    selector="h1"
+)
+```
+
+## Generate a PDF
+
+Change the output extension to `.pdf`:
+
+```{python}
+#| eval: false
+nokap.webshot("https://example.com", "page.pdf")
+```
+
+PDF options like page size, margins, and orientation are available:
+
+```{python}
+#| eval: false
+nokap.webshot(
+    "https://example.com",
+    "page.pdf",
+    page_size="a4",
+    landscape=True,
+    print_background=True,
+)
+```
+
+## Retina Quality
+
+Use `zoom` for higher resolution output:
+
+```{python}
+#| eval: false
+# 2× resolution (retina)
+nokap.webshot("https://example.com", "retina.png", zoom=2)
+```
+
+## Using the CLI
+
+nokap also provides a command-line interface:
+
+```bash
+# Screenshot a URL
+nokap webshot https://example.com screenshot.png
+
+# Capture a specific element with 2× zoom
+nokap webshot https://example.com header.png -s "h1" -z 2
+
+# Render an HTML file
+nokap from-html report.html report.png --selector "table" --expand 10
+```
+
+## Cleanup
+
+Chrome runs in the background for reuse. Clean up explicitly when done:
+
+```{python}
+#| eval: false
+nokap.close()
+```
+
+This is called automatically at process exit, but explicit cleanup is good practice in long-running applications.
+
+## Next Steps
+
+- [Screenshots](10-screenshots.qmd) — Deep dive into image capture options
+- [PDF Generation](12-pdf-generation.qmd) — Full PDF configuration
+- [The CLI](13-cli.qmd) — Command-line usage reference
