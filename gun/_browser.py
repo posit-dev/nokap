@@ -133,7 +133,7 @@ class Chrome:
         path: str | None = None,
         headless: bool = True,
         extra_args: list[str] | None = None,
-        timeout: float = 10.0,
+        timeout: float = 20.0,
     ) -> None:
         self._path = path or find_chrome()
         self._port = find_open_port()
