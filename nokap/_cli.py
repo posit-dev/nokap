@@ -73,3 +73,45 @@ def webshot(
         nokap.close()
 
 
+@cli.command("from-html")
+@click.argument("html_file", type=click.Path(exists=True))
+@click.argument("file", default="webshot.png")
+@click.option("--selector", "-s", default="html", help="CSS selector to capture.")
+@click.option("--vwidth", default=992, type=int, help="Viewport width in pixels.")
+@click.option("--vheight", default=744, type=int, help="Viewport height in pixels.")
+@click.option("--expand", "-e", default=0, type=int, help="Pixels to expand around selector.")
+@click.option("--delay", "-d", default=0.2, type=float, help="Seconds to wait after page load.")
+@click.option("--zoom", "-z", default=1.0, type=float, help="Zoom/scale factor.")
+def from_html(
+    html_file: str,
+    file: str,
+    selector: str,
+    vwidth: int,
+    vheight: int,
+    expand: int,
+    delay: float,
+    zoom: float,
+) -> None:
+    """Render an HTML file to an image or PDF.
+
+    HTML_FILE is a path to an HTML file to render.
+    FILE is the output path (default: webshot.png).
+    """
+    html_content = Path(html_file).read_text(encoding="utf-8")
+    try:
+        result = nokap.from_html(
+            html_content,
+            file,
+            selector=selector,
+            vwidth=vwidth,
+            vheight=vheight,
+            expand=expand,
+            delay=delay,
+            zoom=zoom,
+        )
+        click.echo(result)
+    except nokap.NokapError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    finally:
+        nokap.close()
