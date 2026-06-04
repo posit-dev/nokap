@@ -1,0 +1,149 @@
+---
+title: "PDF Generation"
+guide-section: "Core Concepts"
+tags: [PDF, Configuration]
+---
+
+# PDF Generation
+
+Generate PDFs with configurable page size, margins, orientation, and background printing.
+
+## Basic PDF Capture
+
+Any `webshot()` call with a `.pdf` output extension generates a PDF instead of a screenshot:
+
+```{python}
+#| eval: false
+import nokap
+
+nokap.webshot("https://example.com", "page.pdf")
+```
+
+## Page Size
+
+Control the paper size with the `page_size` parameter:
+
+```{python}
+#| eval: false
+nokap.webshot("https://example.com", "a4.pdf", page_size="a4")
+nokap.webshot("https://example.com", "letter.pdf", page_size="letter")
+```
+
+Available page sizes:
+
+| Size | Dimensions (inches) |
+|------|-------------------|
+| `letter` | 8.5 × 11 |
+| `legal` | 8.5 × 14 |
+| `tabloid` | 11 × 17 |
+| `ledger` | 17 × 11 |
+| `a0` | 33.1 × 46.8 |
+| `a1` | 23.4 × 33.1 |
+| `a2` | 16.5 × 23.4 |
+| `a3` | 11.7 × 16.5 |
+| `a4` | 8.27 × 11.7 |
+| `a5` | 5.83 × 8.27 |
+| `a6` | 4.13 × 5.83 |
+
+## Margins
+
+Set page margins in inches. A single value applies to all sides:
+
+```{python}
+#| eval: false
+# 1-inch margins on all sides
+nokap.webshot("https://example.com", "page.pdf", margins=1.0)
+
+# No margins
+nokap.webshot("https://example.com", "page.pdf", margins=0)
+```
+
+For asymmetric margins, pass a 4-tuple of `(top, right, bottom, left)`:
+
+```{python}
+#| eval: false
+nokap.webshot(
+    "https://example.com",
+    "page.pdf",
+    margins=(1.0, 0.75, 1.0, 0.75),  # top, right, bottom, left
+)
+```
+
+The default margin is `0.5` inches on all sides.
+
+## Orientation
+
+Use `landscape=True` for landscape orientation:
+
+```{python}
+#| eval: false
+nokap.webshot("https://example.com", "wide.pdf", landscape=True)
+```
+
+## Print Background
+
+By default, CSS background colors and images are not included in PDFs. Enable them with `print_background`:
+
+```{python}
+#| eval: false
+nokap.webshot(
+    "https://example.com",
+    "styled.pdf",
+    print_background=True,
+)
+```
+
+## Scale
+
+The `zoom` parameter controls the PDF scale factor:
+
+```{python}
+#| eval: false
+# Shrink content to 75%
+nokap.webshot("https://example.com", "small.pdf", zoom=0.75)
+
+# Enlarge to 150%
+nokap.webshot("https://example.com", "large.pdf", zoom=1.5)
+```
+
+## PDF from HTML Strings
+
+Combine `from_html()` with a `.pdf` extension:
+
+```{python}
+#| eval: false
+html = """
+<html>
+<body>
+  <h1>Invoice #1234</h1>
+  <table>
+    <tr><td>Widget</td><td>$10.00</td></tr>
+    <tr><td>Gadget</td><td>$25.00</td></tr>
+    <tr><th>Total</th><th>$35.00</th></tr>
+  </table>
+</body>
+</html>
+"""
+
+nokap.from_html(html, "invoice.pdf", page_size="a4", margins=1.0)
+```
+
+## Complete Example
+
+```{python}
+#| eval: false
+nokap.webshot(
+    "report.html",
+    "report.pdf",
+    page_size="a4",
+    margins=(1.0, 0.75, 1.0, 0.75),
+    landscape=False,
+    print_background=True,
+    zoom=1,
+)
+```
+
+## Next Steps
+
+- [The CLI](13-cli.qmd) — Generate PDFs from the command line
+- [Integration with Great Tables](20-great-tables-integration.qmd) — Export tables as images or PDFs
