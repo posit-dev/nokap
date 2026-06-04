@@ -1,0 +1,108 @@
+---
+title: "Installation"
+guide-section: "Getting Started"
+tags: [Setup]
+---
+
+# Installation
+
+This guide covers installing nokap and setting up Chrome on your system.
+
+## Requirements
+
+nokap requires:
+
+- **Python ≥ 3.10**
+- **Chrome or Chromium** installed on the system
+
+## Installing from PyPI
+
+```bash
+pip install nokap
+```
+
+This installs nokap and its single runtime dependency (`websockets`).
+
+## Installing from Source
+
+```bash
+git clone https://github.com/rich-iannone/nokap.git
+cd nokap
+pip install -e ".[dev]"
+```
+
+The `[dev]` extra includes testing and linting tools (pytest, ruff, pyright).
+
+## Chrome Setup
+
+nokap needs a system-installed Chrome or Chromium browser. It does **not** download or bundle a browser.
+
+### Automatic Discovery
+
+nokap searches for Chrome in platform-specific locations:
+
+:::{.callout-note collapse="true" title="Platform search paths"}
+
+**macOS**
+
+- `/Applications/Google Chrome.app/Contents/MacOS/Google Chrome`
+- `/Applications/Chromium.app/Contents/MacOS/Chromium`
+- `/Applications/Google Chrome Canary.app/Contents/MacOS/Google Chrome Canary`
+- `/Applications/Brave Browser.app/Contents/MacOS/Brave Browser`
+- `/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge`
+
+**Linux**
+
+Searches `PATH` for: `google-chrome`, `google-chrome-stable`, `chromium-browser`, `chromium`, `microsoft-edge`
+
+**Windows**
+
+Searches `Program Files`, `Program Files (x86)`, and `LOCALAPPDATA` for:
+
+- `Google\Chrome\Application\chrome.exe`
+- `Microsoft\Edge\Application\msedge.exe`
+- `Chromium\Application\chrome.exe`
+
+:::
+
+### Manual Override
+
+Set the `CHROME_PATH` environment variable to use a specific browser:
+
+```bash
+export CHROME_PATH="/usr/bin/chromium-browser"
+```
+
+### CI Environments
+
+On Ubuntu CI runners (GitHub Actions), install Chrome with:
+
+```yaml
+- name: Install Chrome
+  uses: browser-actions/setup-chrome@v1
+  with:
+    chrome-version: stable
+```
+
+## Verifying the Installation
+
+```{python}
+#| eval: false
+import nokap
+
+# Check that Chrome can be found
+path = nokap.find_chrome()
+print(f"Chrome found at: {path}")
+```
+
+## Dependencies
+
+| Package | Role | Required? |
+|---------|------|-----------|
+| `websockets` | Async WebSocket client for CDP | Yes (runtime) |
+| `click` | CLI framework | Yes (runtime) |
+| `Pillow` | Image post-processing (expand/crop) | Optional (`pip install nokap[extra]`) |
+
+## Next Steps
+
+- [Quick Start](02-quick-start.qmd) — Take your first screenshot
