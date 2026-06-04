@@ -20,11 +20,11 @@ jobs:
       - name: Install dependencies
         run: pip install -e ".[dev]"
       - name: Ruff check
-        run: ruff check gun/ tests/
+        run: ruff check nokap/ tests/
       - name: Ruff format check
-        run: ruff format --check gun/ tests/
+        run: ruff format --check nokap/ tests/
       - name: Pyright
-        run: pyright gun/
+        run: pyright nokap/
 
   test:
     runs-on: ${{ matrix.os }}
@@ -46,7 +46,7 @@ jobs:
           chrome-version: stable
 
       - name: Install dependencies
-        run: pip install -e ".[dev]"
+        run: pip install -e ".[dev]" great_tables
 
       - name: Run unit tests
         run: pytest tests/ -v --ignore=tests/test_integration.py --ignore=tests/test_errors.py
