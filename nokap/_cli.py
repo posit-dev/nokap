@@ -2,10 +2,12 @@ from __future__ import annotations
 
 import sys
 from pathlib import Path
+from typing import cast
 
 import click
 
 import nokap
+from nokap._types import PaperSize
 
 
 @click.group(invoke_without_command=True)
@@ -67,7 +69,7 @@ def webshot(
             delay=delay,
             zoom=zoom,
             useragent=useragent,
-            page_size=page_size,
+            page_size=cast(PaperSize, page_size),
             landscape=landscape,
             print_background=print_background,
         )
