@@ -185,10 +185,10 @@ def webshot(
             cdp = _get_cdp()
             session = Session(cdp, width=vwidth, height=vheight)
             break
-        except (ConnectionError_, OSError):
+        except (ConnectionError_, ChromeStartError, OSError):
             if attempt == _MAX_RETRIES:
                 raise
-            # Connection stale — reset and retry
+            # Connection stale or Chrome slow to start — reset and retry
             close()
     else:
         cdp = _get_cdp()
