@@ -84,3 +84,30 @@ def find_chrome() -> str:
     )
 
 
+def _default_chrome_args(port: int, headless: bool = True) -> list[str]:
+    """Build the default Chrome launch arguments."""
+    args = [
+        f"--remote-debugging-port={port}",
+        "--remote-allow-origins=*",
+        "--no-first-run",
+        "--no-default-browser-check",
+        "--disable-background-networking",
+        "--disable-client-side-phishing-detection",
+        "--disable-default-apps",
+        "--disable-extensions",
+        "--disable-hang-monitor",
+        "--disable-popup-blocking",
+        "--disable-prompt-on-repost",
+        "--disable-sync",
+        "--disable-translate",
+        "--metrics-recording-only",
+        "--safebrowsing-disable-auto-update",
+        "--password-store=basic",
+        "--use-mock-keychain",
+    ]
+    if headless:
+        args.append("--headless")
+        args.append("--disable-gpu")
+    return args
+
+
