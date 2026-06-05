@@ -1,10 +1,10 @@
 ---
-title: "Get Started"
+title: "Introduction"
 guide-section: "Getting Started"
 tags: [Overview]
 ---
 
-# Get Started
+# Introduction
 
 Learn what nokap is, why it exists, and how it works under the hood. This page provides a high-level overview of nokap's design philosophy and architecture, giving you the foundational context you'll need before diving into screenshots, PDFs, and the CLI. By the end, you'll understand how nokap communicates with Chrome and why that approach keeps things fast and dependency-free.
 
