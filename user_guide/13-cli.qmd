@@ -6,14 +6,14 @@ tags: [CLI, Tutorial]
 
 # The CLI
 
-nokap includes a command-line interface for capturing screenshots and PDFs without writing Python.
+nokap includes a command-line interface for capturing screenshots and PDFs without writing Python. The CLI exposes the same capabilities as the Python API through two commands (`nokap webshot` and `nokap from-html`) making it easy to integrate nokap into shell scripts, Makefiles, and CI pipelines. All screenshot and PDF options are available as command-line flags with sensible defaults.
 
 ## Overview
 
 nokap includes a command-line interface with two main commands:
 
-- `nokap webshot` — Capture a URL or local file as an image or PDF
-- `nokap from-html` — Render an HTML file to an image or PDF
+- `nokap webshot`: capture a URL or local file as an image or PDF
+- `nokap from-html`: render an HTML file to an image or PDF
 
 ## Installation
 
@@ -139,5 +139,5 @@ nokap --help      # Show help
 
 ## Next Steps
 
-- [Integration with Great Tables](20-great-tables-integration.qmd) — Automate table screenshots
-- [Error Handling](21-error-handling.qmd) — Handle errors gracefully
+- [Integration with Great Tables](20-great-tables-integration.qmd): Automate table screenshots
+- [Error Handling](21-error-handling.qmd): Handle errors gracefully

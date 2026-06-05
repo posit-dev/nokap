@@ -6,7 +6,7 @@ tags: [Tutorial, Screenshots]
 
 # Quick Start
 
-This guide walks you through taking your first screenshot with nokap in under a minute.
+This guide walks you through taking your first screenshot with nokap in under a minute. We'll cover the three main input modes (capturing a live URL, a local HTML file, and raw HTML strings) so you can choose the approach that fits your workflow. Each example is self-contained and ready to copy into a script or notebook.
 
 ## Your First Screenshot
 
@@ -34,7 +34,7 @@ nokap automatically converts local paths to `file://` URLs.
 
 ## From an HTML String
 
-The `from_html()` function is designed for rendering HTML content directly — perfect for libraries that generate HTML:
+The `from_html()` function is designed for rendering HTML content directly, which is great for libraries that generate HTML:
 
 ```{python}
 #| eval: false
@@ -123,6 +123,6 @@ This is called automatically at process exit, but explicit cleanup is good pract
 
 ## Next Steps
 
-- [Screenshots](10-screenshots.qmd) — Deep dive into image capture options
-- [PDF Generation](12-pdf-generation.qmd) — Full PDF configuration
-- [The CLI](13-cli.qmd) — Command-line usage reference
+- [Screenshots](10-screenshots.qmd): Deep dive into image capture options
+- [PDF Generation](12-pdf-generation.qmd): Full PDF configuration
+- [The CLI](13-cli.qmd): Command-line usage reference

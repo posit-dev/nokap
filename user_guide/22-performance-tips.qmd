@@ -6,7 +6,7 @@ tags: [Performance]
 
 # Performance Tips
 
-Optimize nokap for batch processing and high-throughput screenshot capture.
+Optimize nokap for batch processing and high-throughput screenshot capture. nokap is designed to be fast by default (it reuses a single Chrome instance across calls and communicates over a low-overhead WebSocket connection) but there are additional strategies that can dramatically improve throughput when processing many pages. This page covers browser reuse, batch workflows, viewport tuning, and other techniques for getting the most out of nokap.
 
 ## Browser Reuse
 
@@ -59,7 +59,7 @@ A smaller viewport means less content to render. If you're capturing a small ele
 
 ```{python}
 #| eval: false
-# Only capturing a table — no need for a wide viewport
+# Only capturing a table so no need for a wide viewport
 nokap.from_html(html, "table.png", selector="table", vwidth=600, vheight=400)
 ```
 

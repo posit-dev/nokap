@@ -6,7 +6,7 @@ tags: [Setup]
 
 # Installation
 
-This guide covers installing nokap and setting up Chrome on your system.
+This guide covers installing nokap and setting up Chrome on your system. You'll find instructions for installing from PyPI or from source, along with details on how nokap discovers Chrome automatically. If you're running in a container or CI environment, the platform-specific notes at the end will help you get things working smoothly.
 
 ## Requirements
 
@@ -105,4 +105,4 @@ print(f"Chrome found at: {path}")
 
 ## Next Steps
 
-- [Quick Start](02-quick-start.qmd) — Take your first screenshot
+- [Quick Start](02-quick-start.qmd): Take your first screenshot

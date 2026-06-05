@@ -6,11 +6,11 @@ tags: [Overview]
 
 # Get Started
 
-Learn what nokap is, why it exists, and how it works under the hood.
+Learn what nokap is, why it exists, and how it works under the hood. This page provides a high-level overview of nokap's design philosophy and architecture, giving you the foundational context you'll need before diving into screenshots, PDFs, and the CLI. By the end, you'll understand how nokap communicates with Chrome and why that approach keeps things fast and dependency-free.
 
 ## What Is nokap?
 
-**nokap** is a lightweight Python package that captures screenshots and PDFs from web pages using headless Chrome via the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) (CDP). It communicates directly with Chrome over WebSockets — no Selenium, no Playwright, no browser driver binaries.
+**nokap** is a lightweight Python package that captures screenshots and PDFs from web pages using headless Chrome via the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) (CDP). It communicates directly with Chrome over WebSockets so no Selenium, no Playwright, or no browser driver binaries needed.
 
 ## Why Use nokap?
 
@@ -28,10 +28,10 @@ If you need to:
 
 nokap's architecture is intentionally simple:
 
-1. **Launch** — Finds and starts headless Chrome with a random debugging port
-2. **Connect** — Opens a WebSocket to Chrome's CDP endpoint
-3. **Capture** — Creates a tab, navigates, waits, then calls `Page.captureScreenshot` or `Page.printToPDF`
-4. **Cleanup** — Closes the tab; Chrome stays running for reuse until `nokap.close()` or process exit
+1. **Launch**: Finds and starts headless Chrome with a random debugging port
+2. **Connect**: Opens a WebSocket to Chrome's CDP endpoint
+3. **Capture**: Creates a tab, navigates, waits, then calls `Page.captureScreenshot` or `Page.printToPDF`
+4. **Cleanup**: Closes the tab; Chrome stays running for reuse until `nokap.close()` or process exit
 
 The entire package has a single runtime dependency: [`websockets`](https://pypi.org/project/websockets/).
 
@@ -53,5 +53,5 @@ The entire package has a single runtime dependency: [`websockets`](https://pypi.
 
 ## Next Steps
 
-- [Installation](01-installation.qmd) — Get nokap set up on your system
-- [Quick Start](02-quick-start.qmd) — Your first screenshot in 30 seconds
+- [Installation](01-installation.qmd): Get nokap set up on your system
+- [Quick Start](02-quick-start.qmd): Your first screenshot in 30 seconds

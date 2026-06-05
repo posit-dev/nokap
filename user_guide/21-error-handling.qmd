@@ -6,7 +6,7 @@ tags: [Errors]
 
 # Error Handling
 
-nokap provides a clear exception hierarchy so you can catch and respond to specific failure modes.
+nokap provides a clear exception hierarchy so you can catch and respond to specific failure modes. Every exception inherits from a common `NokapError` base class, which means you can handle all nokap errors with a single except clause or drill down into specific error types for more targeted recovery. This page documents each exception, when it's raised, and how to handle it gracefully in your code.
 
 ## Exception Hierarchy
 
@@ -150,4 +150,4 @@ nokap.webshot("https://example.com", "second.png")  # Works fine
 
 ## Next Steps
 
-- [Performance Tips](22-performance-tips.qmd) — Optimize for high-throughput capture
+- [Performance Tips](22-performance-tips.qmd): Optimize for high-throughput capture

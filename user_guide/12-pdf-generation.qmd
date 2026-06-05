@@ -6,7 +6,7 @@ tags: [PDF, Configuration]
 
 # PDF Generation
 
-Generate PDFs with configurable page size, margins, orientation, and background printing.
+Generate PDFs with configurable page size, margins, orientation, and background printing. nokap leverages Chrome's built-in print-to-PDF functionality through the DevTools Protocol, giving you access to the same rendering engine used for on-screen display. This page walks through all available PDF options including standard paper sizes, custom dimensions, margin control, and header/footer configuration.
 
 ## Basic PDF Capture
 
@@ -145,5 +145,5 @@ nokap.webshot(
 
 ## Next Steps
 
-- [The CLI](13-cli.qmd) — Generate PDFs from the command line
-- [Integration with Great Tables](20-great-tables-integration.qmd) — Export tables as images or PDFs
+- [The CLI](13-cli.qmd): Generate PDFs from the command line
+- [Integration with Great Tables](20-great-tables-integration.qmd): Export tables as images or PDFs

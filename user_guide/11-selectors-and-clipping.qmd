@@ -6,7 +6,7 @@ tags: [Screenshots, Configuration]
 
 # Selectors and Clipping
 
-Capture specific elements using CSS selectors, expand padding, or define manual clip regions.
+Capture specific elements using CSS selectors, expand padding, or define manual clip regions. Rather than screenshotting an entire page and cropping afterward, nokap can target individual DOM elements directly, producing tightly framed images with no post-processing required. This page explains how to use single selectors, combine multiple selectors, add padding around elements, and specify exact pixel-level clip rectangles.
 
 ## CSS Selectors
 
@@ -121,5 +121,5 @@ except SelectorError as e:
 
 ## Next Steps
 
-- [PDF Generation](12-pdf-generation.qmd) — Generate PDFs with page layout options
-- [Integration with Great Tables](20-great-tables-integration.qmd) — Use nokap with GT
+- [PDF Generation](12-pdf-generation.qmd): Generate PDFs with page layout options
+- [Integration with Great Tables](20-great-tables-integration.qmd): Use nokap with GT

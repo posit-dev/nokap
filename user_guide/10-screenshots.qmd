@@ -6,7 +6,7 @@ tags: [Screenshots, Tutorial]
 
 # Screenshots
 
-A deep dive into image capture options: formats, viewport, zoom, delay, and more.
+A deep dive into image capture options: formats, viewport, zoom, delay, and more. nokap gives you fine-grained control over how pages are rendered and captured, from choosing between PNG, JPEG, and WebP output to configuring viewport dimensions and device scale factor. This page covers every screenshot-related parameter so you can produce exactly the output you need.
 
 ## Image Formats
 
@@ -58,7 +58,7 @@ nokap.webshot("https://example.com", "2x.png", zoom=2)
 nokap.webshot("https://example.com", "3x.png", zoom=3)
 ```
 
-A `zoom=2` produces an image that is 2× the viewport dimensions in pixels — ideal for HiDPI displays.
+A `zoom=2` produces an image that is 2× the viewport dimensions in pixels: ideal for HiDPI displays.
 
 ## Delay
 
@@ -113,5 +113,5 @@ nokap.from_html(
 
 ## Next Steps
 
-- [Selectors and Clipping](11-selectors-and-clipping.qmd) — Capture specific page elements
-- [PDF Generation](12-pdf-generation.qmd) — Generate PDFs with full layout control
+- [Selectors and Clipping](11-selectors-and-clipping.qmd): Capture specific page elements
+- [PDF Generation](12-pdf-generation.qmd): Generate PDFs with full layout control

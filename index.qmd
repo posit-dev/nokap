@@ -34,7 +34,7 @@ nokap from-html report.html report.png --selector "table" --zoom 2
 
 |  |  |
 |---|---|
-| **Zero heavyweight deps** | No Selenium, no Playwright — just `websockets` and Chrome |
+| **Zero heavyweight deps** | No Selenium, no Playwright: just `websockets` and Chrome |
 | **Screenshots** | PNG, JPEG, WebP via CDP `Page.captureScreenshot` |
 | **PDF generation** | Configurable page size, margins, orientation |
 | **CSS selectors** | Capture specific elements or unions of multiple selectors |

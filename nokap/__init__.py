@@ -188,7 +188,7 @@ def webshot(
         except (ConnectionError_, ChromeStartError, OSError):
             if attempt == _MAX_RETRIES:
                 raise
-            # Connection stale or Chrome slow to start — reset and retry
+            # Connection stale or Chrome slow to start (reset and retry)
             close()
     else:
         cdp = _get_cdp()
