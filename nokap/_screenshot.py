@@ -97,10 +97,10 @@ def capture_screenshot(
             session.evaluate("document.body.offsetHeight")
 
             # Re-measure: if element is still very wide (>= 2x original viewport),
-            # it's a fluid element that grows with the viewport — revert
+            # it's a fluid element that grows with the viewport (revert)
             wide_bounds = session.get_element_bounds(sel_for_measure)
             if wide_bounds.width >= original_width * 2:
-                # Fluid layout element — revert to original viewport
+                # Fluid layout element (revert to original viewport)
                 session.set_viewport(
                     original_width,
                     session._height,
