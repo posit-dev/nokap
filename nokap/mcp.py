@@ -646,9 +646,7 @@ async def list_prompts() -> list[Prompt]:
                 ),
                 PromptArgument(
                     name="output_format",
-                    description=(
-                        "Desired output format: png, jpg, webp, or pdf."
-                    ),
+                    description=("Desired output format: png, jpg, webp, or pdf."),
                     required=True,
                 ),
                 PromptArgument(
@@ -836,8 +834,7 @@ async def handle_completion(
         # Also include partial matches (contains) if few startswith matches
         if len(matches) < 3:
             contains = [
-                v for v in all_values
-                if prefix in v.lower() and v not in matches
+                v for v in all_values if prefix in v.lower() and v not in matches
             ]
             matches.extend(contains)
     else:
