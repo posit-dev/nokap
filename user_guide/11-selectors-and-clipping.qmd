@@ -103,6 +103,17 @@ html = """
 nokap.from_html(html, "table.png", selector="#data-table", expand=5)
 ```
 
+## Automatic Width Detection
+
+When capturing an element whose width fills the viewport (e.g., a wide table), nokap automatically detects that the element may be constrained and expands the viewport to allow it to render at its natural/intrinsic width. This ensures wide tables with many columns are never clipped.
+
+This heuristic distinguishes between:
+
+- **Intrinsic-width elements** (tables, code blocks): These have a fixed natural width. If the viewport constrains them, nokap widens and captures the full content.
+- **Fluid-layout elements** (`<main>`, `<div>` with percentage widths): These grow with the viewport. nokap detects this and reverts to the original viewport to avoid unnecessary whitespace.
+
+No manual `vwidth` configuration is needed in either case.
+
 ## Selector Errors
 
 If a selector matches no elements, nokap raises a `SelectorError`:
