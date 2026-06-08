@@ -94,6 +94,20 @@ nav_icons:
     Performance Tips: zap
     AI Agent Integration: bot
 
+# MCP Server Documentation
+# ------------------------
+mcp:
+  enabled: true
+  module: nokap.mcp
+  name: nokap
+  categories:
+    "Capture":
+      - screenshot_url
+      - screenshot_html
+    "PDF Generation":
+      - generate_pdf
+    "Diagnostics":
+      - doctor
 
 # Skills (Multi-Skill Mode)
 # -------------------------
