@@ -7,7 +7,10 @@ from typing import cast
 import click
 
 import nokap
+from nokap._browser import find_chrome
+from nokap._errors import ChromeNotFoundError
 from nokap._types import PaperSize
+from nokap._utils import current_platform
 
 
 @click.group(invoke_without_command=True)
@@ -127,3 +130,41 @@ def from_html(
         sys.exit(1)
     finally:
         nokap.close()
+
+
+@cli.command()
+def info() -> None:
+    """Display system info and whether a compatible browser is found."""
+    import platform
+    import subprocess
+    from importlib.metadata import version
+
+    click.echo(f"nokap version: {version('nokap')}")
+    click.echo(f"Python: {sys.version.split()[0]}")
+    click.echo(f"Platform: {current_platform()} ({platform.platform()})")
+    click.echo("")
+
+    try:
+        chrome_path = find_chrome()
+        click.echo(f"Browser found: {chrome_path}")
+
+        # Try to get the version
+        try:
+            result = subprocess.run(
+                [chrome_path, "--version"],
+                capture_output=True,
+                text=True,
+                timeout=5,
+            )
+            version = result.stdout.strip()
+            if version:
+                click.echo(f"Browser version: {version}")
+        except (subprocess.TimeoutExpired, OSError):
+            pass
+
+    except ChromeNotFoundError:
+        click.echo("Browser found: No")
+        click.echo(
+            "Install Chrome, Chromium, or set the CHROME_PATH environment variable."
+        )
+        sys.exit(1)
