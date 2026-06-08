@@ -1,4 +1,5 @@
 from nokap._types import ClipRect, Expand, PDFOptions
+from nokap._pdf import _apply_expand
 
 
 def test_clip_rect_to_cdp():
@@ -50,3 +51,23 @@ def test_pdf_options_to_cdp():
     assert cdp["marginTop"] == 1.0
     assert cdp["scale"] == 0.8
     assert cdp["transferMode"] == "ReturnAsBase64"
+
+
+def test_apply_expand_uniform():
+    clip = ClipRect(x=50, y=100, width=200, height=150)
+    exp = Expand.from_value(10)
+    result = _apply_expand(clip, exp)
+    assert result.x == 40
+    assert result.y == 90
+    assert result.width == 220
+    assert result.height == 170
+
+
+def test_apply_expand_clamps_to_zero():
+    clip = ClipRect(x=3, y=5, width=100, height=100)
+    exp = Expand.from_value(10)
+    result = _apply_expand(clip, exp)
+    assert result.x == 0
+    assert result.y == 0
+    assert result.width == 120  # 100 + left(10) + right(10)
+    assert result.height == 120  # 100 + top(10) + bottom(10)
