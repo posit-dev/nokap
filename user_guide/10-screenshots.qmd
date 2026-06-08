@@ -61,9 +61,10 @@ nokap.webshot("https://example.com", "3x.png", zoom=3)
 A `zoom=2` produces an image that is 2× the viewport dimensions in pixels. This is ideal for HiDPI displays.
 
 :::{.callout-note}
-
-The `zoom` parameter applies only to raster image output (PNG, JPEG, WebP). It is ignored for PDF output since PDFs are vector format and always render at full resolution.
+The `zoom` parameter applies only to raster image output (PNG, JPEG, WebP). It is ignored for PDF output since PDFs are vector format and always render at full resolution. See [PDF Generation](12-pdf-generation.qmd) for details on vector PDF output.
 :::
+
+In general, `zoom=2` is a good default for images destined for documentation or presentations, balancing file size with crisp rendering on modern screens.
 
 ## Delay
 
