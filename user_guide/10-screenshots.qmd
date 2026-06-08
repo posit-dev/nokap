@@ -60,6 +60,10 @@ nokap.webshot("https://example.com", "3x.png", zoom=3)
 
 A `zoom=2` produces an image that is 2× the viewport dimensions in pixels: ideal for HiDPI displays.
 
+:::{.callout-note}
+The `zoom` parameter applies only to raster image output (PNG, JPEG, WebP). It is ignored for PDF output since PDFs are vector format and always render at full resolution.
+:::
+
 ## Delay
 
 The `delay` parameter adds a wait (in seconds) after the page load event fires, before capturing. This is useful for pages with animations or lazy-loaded content:
