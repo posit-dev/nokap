@@ -5,12 +5,13 @@ import subprocess
 import sys
 import tempfile
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 from mcp.server import Server
 from mcp.types import (
     Completion,
     CompletionArgument,
+    GetPromptResult,
     Prompt,
     PromptArgument,
     PromptMessage,
@@ -20,6 +21,9 @@ from mcp.types import (
     TextContent,
     Tool,
 )
+from pydantic import AnyUrl
+
+from nokap._types import PaperSize
 
 server = Server("nokap")
 server.instructions = (
@@ -36,7 +40,7 @@ server.instructions = (
 # ---------------------------------------------------------------------------
 
 
-@server.list_tools()
+@server.list_tools()  # type: ignore[reportUntypedFunctionDecorator]
 async def list_tools() -> list[Tool]:
     return [
         Tool(
@@ -287,8 +291,8 @@ async def list_tools() -> list[Tool]:
     ]
 
 
-@server.call_tool()
-async def call_tool(name: str, arguments: dict) -> list[TextContent]:
+@server.call_tool()  # type: ignore[reportUntypedFunctionDecorator]
+async def call_tool(name: str, arguments: dict[str, Any]) -> list[TextContent]:
     if name == "screenshot_url":
         return _handle_screenshot_url(arguments)
     elif name == "screenshot_html":
@@ -300,18 +304,18 @@ async def call_tool(name: str, arguments: dict) -> list[TextContent]:
     raise ValueError(f"Unknown tool: {name}")
 
 
-def _handle_screenshot_url(arguments: dict) -> list[TextContent]:
+def _handle_screenshot_url(arguments: dict[str, Any]) -> list[TextContent]:
     """Handle the screenshot_url tool."""
     import nokap
 
-    url = arguments["url"]
-    file = arguments.get("file", "screenshot.png")
-    selector = arguments.get("selector")
-    vwidth = arguments.get("vwidth", 992)
-    vheight = arguments.get("vheight", 744)
-    zoom = arguments.get("zoom", 1)
-    expand = arguments.get("expand", 0)
-    delay = arguments.get("delay", 0.2)
+    url: str = arguments["url"]
+    file: str = arguments.get("file", "screenshot.png")
+    selector: str | None = arguments.get("selector")
+    vwidth: int = arguments.get("vwidth", 992)
+    vheight: int = arguments.get("vheight", 744)
+    zoom: float = arguments.get("zoom", 1)
+    expand: int = arguments.get("expand", 0)
+    delay: float = arguments.get("delay", 0.2)
 
     try:
         result_path = nokap.webshot(
@@ -350,18 +354,18 @@ def _handle_screenshot_url(arguments: dict) -> list[TextContent]:
         nokap.close()
 
 
-def _handle_screenshot_html(arguments: dict) -> list[TextContent]:
+def _handle_screenshot_html(arguments: dict[str, Any]) -> list[TextContent]:
     """Handle the screenshot_html tool."""
     import nokap
 
-    html = arguments["html"]
-    file = arguments.get("file", "screenshot.png")
-    selector = arguments.get("selector", "html")
-    vwidth = arguments.get("vwidth", 992)
-    vheight = arguments.get("vheight", 744)
-    zoom = arguments.get("zoom", 1)
-    expand = arguments.get("expand", 0)
-    delay = arguments.get("delay", 0.2)
+    html: str = arguments["html"]
+    file: str = arguments.get("file", "screenshot.png")
+    selector: str = arguments.get("selector", "html")
+    vwidth: int = arguments.get("vwidth", 992)
+    vheight: int = arguments.get("vheight", 744)
+    zoom: float = arguments.get("zoom", 1)
+    expand: int = arguments.get("expand", 0)
+    delay: float = arguments.get("delay", 0.2)
 
     try:
         result_path = nokap.from_html(
@@ -399,21 +403,21 @@ def _handle_screenshot_html(arguments: dict) -> list[TextContent]:
         nokap.close()
 
 
-def _handle_generate_pdf(arguments: dict) -> list[TextContent]:
+def _handle_generate_pdf(arguments: dict[str, Any]) -> list[TextContent]:
     """Handle the generate_pdf tool."""
     import nokap
     from nokap._utils import is_url
 
-    source = arguments["source"]
-    file = arguments.get("file", "output.pdf")
-    selector = arguments.get("selector")
-    page_size = arguments.get("page_size", "letter")
-    landscape = arguments.get("landscape", False)
-    margins = arguments.get("margins", 0.5)
-    print_background = arguments.get("print_background", False)
-    expand = arguments.get("expand", 0)
-    vwidth = arguments.get("vwidth", 992)
-    delay = arguments.get("delay", 0.2)
+    source: str = arguments["source"]
+    file: str = arguments.get("file", "output.pdf")
+    selector: str | None = arguments.get("selector")
+    page_size = cast(PaperSize, arguments.get("page_size", "letter"))
+    landscape: bool = arguments.get("landscape", False)
+    margins: float = arguments.get("margins", 0.5)
+    print_background: bool = arguments.get("print_background", False)
+    expand: int = arguments.get("expand", 0)
+    vwidth: int = arguments.get("vwidth", 992)
+    delay: float = arguments.get("delay", 0.2)
 
     try:
         # Determine if source is a URL/path or raw HTML
@@ -472,7 +476,7 @@ def _handle_generate_pdf(arguments: dict) -> list[TextContent]:
         nokap.close()
 
 
-def _handle_doctor(arguments: dict) -> list[TextContent]:
+def _handle_doctor(arguments: dict[str, Any]) -> list[TextContent]:
     """Handle the doctor tool: system readiness check."""
     from nokap._browser import find_chrome
     from nokap._errors import ChromeNotFoundError
@@ -539,11 +543,11 @@ def _handle_doctor(arguments: dict) -> list[TextContent]:
 # ---------------------------------------------------------------------------
 
 
-@server.list_resources()
+@server.list_resources()  # type: ignore[reportUntypedFunctionDecorator]
 async def list_resources() -> list[Resource]:
     return [
         Resource(
-            uri="nokap://capabilities",
+            uri=AnyUrl("nokap://capabilities"),
             name="Capture Capabilities",
             description=(
                 "Summary of nokap's capture capabilities including supported "
@@ -554,8 +558,8 @@ async def list_resources() -> list[Resource]:
     ]
 
 
-@server.read_resource()
-async def read_resource(uri: str) -> str:
+@server.read_resource()  # type: ignore[reportUntypedFunctionDecorator]
+async def read_resource(uri: AnyUrl) -> str:
     if str(uri) == "nokap://capabilities":
         return json.dumps(
             {
@@ -597,7 +601,7 @@ async def read_resource(uri: str) -> str:
 # ---------------------------------------------------------------------------
 
 
-@server.list_prompts()
+@server.list_prompts()  # type: ignore[reportUntypedFunctionDecorator]
 async def list_prompts() -> list[Prompt]:
     return [
         Prompt(
@@ -662,16 +666,16 @@ async def list_prompts() -> list[Prompt]:
     ]
 
 
-@server.get_prompt()
-async def get_prompt(name: str, arguments: dict | None) -> list[PromptMessage]:
+@server.get_prompt()  # type: ignore[reportUntypedFunctionDecorator]
+async def get_prompt(name: str, arguments: dict[str, str] | None) -> GetPromptResult:
     if name == "capture_strategy":
-        return _prompt_capture_strategy(arguments or {})
+        return GetPromptResult(messages=_prompt_capture_strategy(arguments or {}))
     elif name == "batch_capture":
-        return _prompt_batch_capture(arguments or {})
+        return GetPromptResult(messages=_prompt_batch_capture(arguments or {}))
     raise ValueError(f"Unknown prompt: {name}")
 
 
-def _prompt_capture_strategy(arguments: dict) -> list[PromptMessage]:
+def _prompt_capture_strategy(arguments: dict[str, str]) -> list[PromptMessage]:
     """Generate guidance for the best capture approach."""
     target = arguments.get("target", "a web page")
     output_use = arguments.get("output_use", "general use")
@@ -718,7 +722,7 @@ Provide a specific code example with the recommended settings for this use case.
     return [PromptMessage(role="user", content=TextContent(type="text", text=text))]
 
 
-def _prompt_batch_capture(arguments: dict) -> list[PromptMessage]:
+def _prompt_batch_capture(arguments: dict[str, str]) -> list[PromptMessage]:
     """Generate a batch capture script template."""
     source_type = arguments.get("source_type", "list of URLs")
     output_format = arguments.get("output_format", "png")
@@ -804,7 +808,7 @@ _COMPLETIONS: dict[str, dict[str, list[str]]] = {
 }
 
 
-@server.completion()
+@server.completion()  # type: ignore[reportUntypedFunctionDecorator]
 async def handle_completion(
     ref: PromptReference | ResourceTemplateReference,
     argument: CompletionArgument,
