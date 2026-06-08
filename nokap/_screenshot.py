@@ -71,17 +71,42 @@ def capture_screenshot(
 
     fmt = _resolve_format(file)
 
-    # Widen the viewport so elements (especially tables) can expand to their
-    # natural/intrinsic width without being constrained by the viewport.
+    # For selector-based captures, detect if the element has a natural/intrinsic
+    # width that's being constrained by the viewport (e.g., wide tables). We use
+    # a two-pass approach: widen the viewport, re-measure, and check if the
+    # element shrank (has intrinsic width) or stayed wide (fluid layout).
     if selector is not None:
-        _WIDE_VIEWPORT = 16384
-        session.set_viewport(
-            _WIDE_VIEWPORT,
-            session._height,
-            device_scale_factor=zoom if zoom != 1 else 1.0,
-        )
-        # Force layout reflow
-        session.evaluate("document.body.offsetHeight")
+        # Apply zoom first so measurements account for scale
+        if zoom != 1:
+            session.set_viewport(
+                session._width, session._height, device_scale_factor=zoom
+            )
+
+        sel_for_measure = selector if isinstance(selector, str) else selector[0]
+        original_width = session._width
+        current_bounds = session.get_element_bounds(sel_for_measure)
+
+        # Only attempt widening if element fills the viewport (potentially constrained)
+        if current_bounds.width >= original_width - 1:
+            _WIDE_VIEWPORT = 16384
+            session.set_viewport(
+                _WIDE_VIEWPORT,
+                session._height,
+                device_scale_factor=zoom if zoom != 1 else 1.0,
+            )
+            session.evaluate("document.body.offsetHeight")
+
+            # Re-measure: if element is still very wide (>= 2x original viewport),
+            # it's a fluid element that grows with the viewport — revert
+            wide_bounds = session.get_element_bounds(sel_for_measure)
+            if wide_bounds.width >= original_width * 2:
+                # Fluid layout element — revert to original viewport
+                session.set_viewport(
+                    original_width,
+                    session._height,
+                    device_scale_factor=zoom if zoom != 1 else 1.0,
+                )
+                session.evaluate("document.body.offsetHeight")
     elif zoom != 1:
         # Apply zoom via device scale factor
         session.set_viewport(session._width, session._height, device_scale_factor=zoom)
