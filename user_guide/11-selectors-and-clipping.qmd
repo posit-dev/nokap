@@ -10,7 +10,7 @@ Capture specific elements using CSS selectors, expand padding, or define manual 
 
 ## CSS Selectors
 
-Use the `selector` parameter to capture a specific element on the page. The screenshot is cropped to the element's bounding box:
+The most common way to target a specific part of a page is with a CSS selector. When you pass a `selector`, nokap locates the matching element in the DOM, computes its bounding box, and captures only that region. This works for both image and PDF output.
 
 ```{python}
 #| eval: false
@@ -28,7 +28,7 @@ nokap.webshot("https://example.com", "hero.png", selector="#hero-section")
 
 ## Multiple Selectors
 
-Pass a list of selectors to capture the union of multiple elements. The bounding box expands to encompass all matched elements:
+Sometimes the content you need spans multiple elements that aren't wrapped in a single container. In those cases, pass a list of selectors and nokap computes the union bounding box (the smallest rectangle that encompasses all matched elements):
 
 ```{python}
 #| eval: false
@@ -40,11 +40,11 @@ nokap.webshot(
 )
 ```
 
-Elements with zero width or height (invisible elements) are automatically excluded from the union calculation.
+Elements with zero width or height (invisible elements) are automatically excluded from the union calculation. This makes it safe to include selectors that might not be visible on every page.
 
 ## Expand / Padding
 
-The `expand` parameter adds padding (in pixels) around the captured element's bounding box:
+Capturing an element right at its bounding box edge can feel cramped. The `expand` parameter adds breathing room (in pixels) around the element, giving you a more polished result without needing to modify the page's CSS:
 
 ```{python}
 #| eval: false
@@ -65,9 +65,11 @@ nokap.webshot(
 )
 ```
 
+A small expand value (5–10px) is usually enough to prevent visual crowding. Larger values are useful when the surrounding whitespace is part of the design intent.
+
 ## Clip Rectangle
 
-For precise manual control, use `cliprect` instead of a selector. It takes a tuple of `(x, y, width, height)` in CSS pixels:
+When you need pixel-perfect control over the captured region (or when the area of interest doesn't correspond to any single DOM element) use `cliprect`. It takes a tuple of `(x, y, width, height)` in CSS pixels, specifying an exact rectangle on the page:
 
 ```{python}
 #| eval: false
@@ -85,7 +87,7 @@ nokap.webshot(
 
 ## Selectors with from_html()
 
-When using `from_html()`, the default selector is `"html"` (full page). Override it to capture specific elements:
+When rendering HTML strings with `from_html()`, the default selector is `"html"`, which captures the entire rendered page. For most use cases (especially when working with generated HTML from tools like Great Tables) you'll want to override this with a more specific selector to capture just the element of interest:
 
 ```{python}
 #| eval: false
@@ -105,18 +107,18 @@ nokap.from_html(html, "table.png", selector="#data-table", expand=5)
 
 ## Automatic Width Detection
 
-When capturing an element whose width fills the viewport (e.g., a wide table), nokap automatically detects that the element may be constrained and expands the viewport to allow it to render at its natural/intrinsic width. This ensures wide tables with many columns are never clipped.
+A common frustration when capturing wide content (like a table with many columns) is that the default viewport width clips the element. nokap solves this automatically: when it detects that an element's width fills or exceeds the viewport, it temporarily widens the viewport to allow the element to render at its natural/intrinsic width. The result is a capture that shows the full content regardless of how wide it is.
 
-This heuristic distinguishes between:
+This behavior uses a two-pass heuristic to distinguish between two types of elements:
 
-- **Intrinsic-width elements** (tables, code blocks): These have a fixed natural width. If the viewport constrains them, nokap widens and captures the full content.
-- **Fluid-layout elements** (`<main>`, `<div>` with percentage widths): These grow with the viewport. nokap detects this and reverts to the original viewport to avoid unnecessary whitespace.
+- **Intrinsic-width elements** (tables, code blocks): These have a fixed natural width determined by their content. If the viewport constrains them, nokap widens the viewport and captures the full content.
+- **Fluid-layout elements** (`<main>`, `<div>` with percentage widths): These grow with the viewport and have no fixed intrinsic width. nokap detects this pattern and reverts to the original viewport to avoid producing output with unnecessary whitespace on both sides.
 
-No manual `vwidth` configuration is needed in either case.
+No manual `vwidth` configuration is needed in either case. The detection works for both image and PDF output, so wide tables are always captured completely whether you're producing a PNG or an element-bounded PDF.
 
 ## Selector Errors
 
-If a selector matches no elements, nokap raises a `SelectorError`:
+When a selector doesn't match any element in the rendered page, nokap raises a `SelectorError` immediately rather than producing a blank or broken capture. This makes it easy to catch typos or selectors that depend on content that hasn't loaded yet:
 
 ```{python}
 #| eval: false
