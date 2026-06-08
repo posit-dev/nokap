@@ -359,8 +359,8 @@ def batch(
     """Capture multiple URLs/files from a JSON manifest.
 
     `MANIFEST` is a path to a JSON file containing an array of capture jobs.
-    Each job object requires a "file" key (output filename) and either a
-    "url" or "html" key (source). All other keys map to `webshot()`
+    Each job object requires a 'file' key (output filename) and either a
+    'url' or 'html' key (source). All other keys map to `webshot()`
     parameters and override the command-line defaults.
 
     Chrome is launched once and reused across all jobs, making batch
@@ -369,11 +369,13 @@ def batch(
 
     \b
     Supported job keys:
-      url, html, file, selector, expand, zoom, delay,
-      vwidth, vheight, page_size, landscape, print_background
+
+      'url', 'html', 'file', 'selector', 'expand', 'zoom', 'delay',
+      'vwidth', 'vheight', 'page_size', 'landscape', 'print_background'
 
     \b
     Example manifest (captures.json):
+
     [
       {"url": "https://example.com", "file": "homepage.png"},
       {"url": "report.html", "file": "report.pdf", "selector": "table"},
