@@ -137,6 +137,89 @@ nokap --version   # Show version
 nokap --help      # Show help
 ```
 
+## `nokap doctor`
+
+The `doctor` command goes beyond `info` by actually launching Chrome, creating a tab, rendering test content, and capturing both a screenshot and an element-bounded PDF. It reports timing for each step, making it invaluable for debugging CI environments where captures fail or run slowly.
+
+```bash
+nokap doctor
+```
+
+Sample output:
+
+```
+nokap doctor
+========================================
+nokap version: 0.1.0
+Python: 3.12.0
+Platform: macos (macOS-14.0-arm64)
+
+1. Finding Chrome... OK (0ms)
+   Path: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+2. Launching headless Chrome... OK (210ms)
+   WebSocket: ws://127.0.0.1:51234/devtools/browser/abc123
+3. Test capture (HTML → PNG)... OK (320ms, 8.6 KB)
+4. Test capture (HTML → element PDF)... OK (290ms, 7.2 KB)
+
+All checks passed.
+```
+
+If any step fails, `doctor` reports the error and exits with code `1`. This makes it easy to spot issues like missing Chrome installations, permission problems, or slow startup times in containerized environments.
+
+## `nokap batch`
+
+The `batch` command processes multiple capture jobs from a JSON manifest file. This is ideal for documentation builds, batch report generation, or any workflow where you need to capture many pages with potentially different settings.
+
+```bash
+nokap batch [OPTIONS] MANIFEST
+```
+
+### Arguments
+
+| Argument | Description | Default |
+|----------|-------------|---------|
+| `MANIFEST` | Path to a JSON file with an array of capture jobs | *(required)* |
+
+### Options
+
+| Option | Short | Description | Default |
+|--------|-------|-------------|---------|
+| `--output-dir` | `-o` | Directory to write output files | `.` |
+| `--delay` | `-d` | Default delay for all jobs (seconds) | `0.2` |
+| `--zoom` | `-z` | Default zoom factor for all jobs | `1.0` |
+| `--selector` | `-s` | Default CSS selector for all jobs | *(none)* |
+| `--expand` | `-e` | Default expand for all jobs (pixels) | `0` |
+
+### Manifest Format
+
+The manifest is a JSON array where each object describes a capture job. Each job requires a `"file"` key (output filename) and either a `"url"` or `"html"` key (source content). All other keys correspond to `webshot()` parameters and override the command-line defaults.
+
+```json
+[
+  {"url": "https://example.com", "file": "example.png"},
+  {"url": "report.html", "file": "report.pdf", "selector": "table", "expand": 10},
+  {"html": "<h1>Generated</h1>", "file": "generated.png", "zoom": 2},
+  {"html": "<table><tr><td>A</td></tr></table>", "file": "table.pdf", "selector": "table"}
+]
+```
+
+Available job keys: `url`, `html`, `file`, `selector`, `expand`, `zoom`, `delay`, `vwidth`, `vheight`, `page_size`, `landscape`, `print_background`.
+
+### Examples
+
+```bash
+# Process all jobs, writing output to a directory
+nokap batch captures.json -o output/
+
+# Apply a default selector and zoom to all jobs
+nokap batch tables.json -o images/ -s "table" -z 2 -e 5
+
+# Zero delay for static HTML (faster batch processing)
+nokap batch pages.json -o out/ -d 0
+```
+
+Chrome is kept alive across all jobs in the batch, so startup cost is only paid once. Jobs that fail are reported individually and don't stop the batch (a summary is printed at the end showing how many succeeded).
+
 ## Next Steps
 
 The CLI gives you access to all of nokap's capture capabilities without writing Python (useful for shell scripts, CI pipelines, Makefiles, and quick one-off captures from the terminal). Every option available in the Python API has a corresponding command-line flag.
