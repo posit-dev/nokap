@@ -104,7 +104,7 @@ mcp:
     "Capture":
       - screenshot_url
       - screenshot_html
-    "PDF Generation":
+    "Writing to PDF":
       - generate_pdf
     "Diagnostics":
       - doctor
