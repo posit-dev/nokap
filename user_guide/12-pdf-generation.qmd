@@ -95,16 +95,88 @@ nokap.webshot(
 
 ## Scale
 
-The `zoom` parameter controls the PDF scale factor:
+~~The `zoom` parameter controls the PDF scale factor:~~
+
+:::{.callout-note}
+The `zoom` parameter is ignored for PDF output. PDFs are vector format and always render at full resolution regardless of scale. Use `zoom` only for raster screenshots (PNG, JPEG, WebP) where it controls pixel density.
+:::
+
+## Element-Bounded PDF
+
+When you combine a `.pdf` output with a `selector`, nokap produces a tightly-bounded PDF sized to fit just that element — with selectable text preserved. This is ideal for exporting tables or charts into presentations where you need vector quality without an entire page of whitespace.
 
 ```{python}
 #| eval: false
-# Shrink content to 75%
-nokap.webshot("https://example.com", "small.pdf", zoom=0.75)
-
-# Enlarge to 150%
-nokap.webshot("https://example.com", "large.pdf", zoom=1.5)
+# Capture just the table as a tight-fit PDF
+nokap.webshot("report.html", "table.pdf", selector="table", expand=10)
 ```
+
+The element-bounded PDF works by:
+
+1. Measuring the element's bounding box
+2. Setting the PDF paper size to exactly match the element dimensions
+3. Isolating the element for print rendering
+
+### With `from_html()`
+
+This is the primary integration point for tools like Great Tables:
+
+```{python}
+#| eval: false
+from great_tables import GT, exibble
+
+html = GT(exibble).as_raw_html(make_page=True, all_important=True)
+
+# Tight PDF of just the table — perfect for slides
+nokap.from_html(html, "table.pdf", selector="table", expand=5)
+```
+
+### Expand / Padding
+
+The `expand` parameter adds even whitespace around the element in the PDF:
+
+```{python}
+#| eval: false
+# No padding — PDF edges touch the table
+nokap.from_html(html, "tight.pdf", selector="table")
+
+# 20px breathing room on all sides
+nokap.from_html(html, "padded.pdf", selector="table", expand=20)
+
+# Asymmetric padding
+nokap.from_html(html, "asym.pdf", selector="table", expand=(10, 20, 10, 20))
+```
+
+### Backgrounds
+
+Element-bounded PDFs include CSS backgrounds by default (since styled tables and charts need them). Full-page PDFs do not include backgrounds unless `print_background=True` is specified.
+
+### Wide Tables
+
+nokap automatically detects when a table (or other element with intrinsic width) is being constrained by the viewport. It widens the viewport to let the element render at its natural size, then sizes the PDF to fit. No manual `vwidth` adjustment is needed — even very wide tables with many columns render completely.
+
+```{python}
+#| eval: false
+import pandas as pd
+from great_tables import GT
+
+# A 20-column table that's wider than the default 992px viewport
+df = pd.DataFrame({f"col_{i}": [f"val_{i}"] for i in range(20)})
+html = GT(df).as_raw_html(make_page=True, all_important=True)
+
+# Automatically expands to fit all columns
+nokap.from_html(html, "wide_table.pdf", selector="table", expand=5)
+```
+
+## Full-Page PDF vs Element-Bounded PDF
+
+| | Full-Page PDF | Element-Bounded PDF |
+|--|--|--|
+| **Trigger** | `.pdf` output, no selector | `.pdf` output + `selector` |
+| **Paper size** | Standard (letter, A4, etc.) | Sized to element |
+| **Content** | Entire page | Just the selected element |
+| **Backgrounds** | Off by default | On by default |
+| **Use case** | Print a document | Export a table/chart for slides |
 
 ## PDF from HTML Strings
 
