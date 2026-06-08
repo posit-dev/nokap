@@ -45,6 +45,10 @@ check: lint type-check test ## Run all checks (lint, type-check, test)
 visual-check: ## Generate visual check images (PNG + PDF matrix)
 	@$(PYTHON) scripts/visual_check.py
 
+.PHONY: site-capture
+site-capture: ## Capture a live site (pypi.org) as PNG + PDF
+	@$(PYTHON) scripts/site_capture.py
+
 .PHONY: docs
 docs: ## Build documentation site
 	@.venv/bin/great-docs build
