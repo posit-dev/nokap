@@ -71,8 +71,19 @@ def capture_screenshot(
 
     fmt = _resolve_format(file)
 
-    # Apply zoom via device scale factor
-    if zoom != 1:
+    # Widen the viewport so elements (especially tables) can expand to their
+    # natural/intrinsic width without being constrained by the viewport.
+    if selector is not None:
+        _WIDE_VIEWPORT = 16384
+        session.set_viewport(
+            _WIDE_VIEWPORT,
+            session._height,
+            device_scale_factor=zoom if zoom != 1 else 1.0,
+        )
+        # Force layout reflow
+        session.evaluate("document.body.offsetHeight")
+    elif zoom != 1:
+        # Apply zoom via device scale factor
         session.set_viewport(session._width, session._height, device_scale_factor=zoom)
 
     # Determine clip region
