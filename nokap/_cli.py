@@ -25,7 +25,7 @@ def cli(ctx: click.Context) -> None:
     to the content.
 
     \b
-    Quick start:
+    Examples:
       nokap webshot https://example.com screenshot.png
       nokap from-html table.html table.pdf -s "table" -e 10
       nokap doctor
