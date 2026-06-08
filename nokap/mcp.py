@@ -9,10 +9,14 @@ from typing import Any
 
 from mcp.server import Server
 from mcp.types import (
+    Completion,
+    CompletionArgument,
     Prompt,
     PromptArgument,
     PromptMessage,
+    PromptReference,
     Resource,
+    ResourceTemplateReference,
     TextContent,
     Tool,
 )
@@ -741,3 +745,102 @@ Requirements for the script:
 Generate a complete, runnable script."""
 
     return [PromptMessage(role="user", content=TextContent(type="text", text=text))]
+
+
+# ---------------------------------------------------------------------------
+# Completions
+# ---------------------------------------------------------------------------
+
+# Completion values for each prompt argument
+_COMPLETIONS: dict[str, dict[str, list[str]]] = {
+    "capture_strategy": {
+        "target": [
+            "a data table from Great Tables",
+            "a full web page",
+            "a Plotly chart",
+            "a hero section or banner",
+            "a navigation menu",
+            "a dashboard with multiple charts",
+            "an HTML email template",
+            "a styled code snippet",
+            "a social media card (Open Graph image)",
+            "a PDF invoice or receipt",
+        ],
+        "output_use": [
+            "embed in a slide deck",
+            "include in documentation",
+            "share on social media",
+            "print at high quality",
+            "use as a thumbnail",
+            "embed in a PDF report",
+            "attach to an email",
+            "display in a README",
+            "archive for compliance",
+            "visual regression testing",
+        ],
+    },
+    "batch_capture": {
+        "source_type": [
+            "list of URLs",
+            "generated HTML tables from Great Tables",
+            "HTML files in a directory",
+            "Plotly figures",
+            "Jinja2 templates with different data",
+            "pages from a sitemap",
+        ],
+        "output_format": [
+            "png",
+            "jpg",
+            "webp",
+            "pdf",
+        ],
+        "naming": [
+            "sequential numbers (001, 002, ...)",
+            "based on URL slug",
+            "based on input filename",
+            "timestamp-based",
+            "custom prefix with index",
+        ],
+    },
+}
+
+
+@server.completion()
+async def handle_completion(
+    ref: PromptReference | ResourceTemplateReference,
+    argument: CompletionArgument,
+    context: Any | None = None,
+) -> Completion | None:
+    """Provide auto-complete suggestions for prompt arguments."""
+    # Only handle prompt completions
+    if not isinstance(ref, PromptReference):
+        return None
+
+    prompt_name = ref.name
+    arg_name = argument.name
+    prefix = argument.value.lower()
+
+    # Look up completions for this prompt + argument
+    prompt_completions = _COMPLETIONS.get(prompt_name)
+    if not prompt_completions:
+        return None
+
+    all_values = prompt_completions.get(arg_name)
+    if not all_values:
+        return None
+
+    # Filter by prefix if the user has typed something
+    if prefix:
+        matches = [v for v in all_values if v.lower().startswith(prefix)]
+        # Also include partial matches (contains) if few startswith matches
+        if len(matches) < 3:
+            contains = [v for v in all_values if prefix in v.lower() and v not in matches]
+            matches.extend(contains)
+    else:
+        matches = all_values
+
+    return Completion(
+        values=matches[:20],
+        total=len(matches),
+        hasMore=len(matches) > 20,
+    )
