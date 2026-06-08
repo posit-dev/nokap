@@ -20,7 +20,6 @@ OUTPUT_DIR = Path(__file__).resolve().parent.parent / "_visual_check"
 
 # Parameters to scan
 ZOOMS = [1, 2, 3]
-PDF_ZOOMS = [1, 1.5, 2]  # Chrome PDF scale is limited to [0.1, 2.0]
 EXPANDS = [0, 5, 20]
 
 # A simple GT table rendered to HTML
@@ -55,32 +54,30 @@ def main() -> None:
         print(f"{out.stat().st_size / 1024:.1f} KB")
         generated.append(out)
 
-    # --- PDF element-bounded captures ---
-    for zoom, expand in itertools.product(PDF_ZOOMS, EXPANDS):
-        name = f"pdf_element_zoom{zoom}_expand{expand}.pdf"
+    # --- PDF element-bounded captures (zoom is ignored for PDF; vary expand) ---
+    for expand in EXPANDS:
+        name = f"pdf_element_expand{expand}.pdf"
         out = OUTPUT_DIR / name
         print(f"  {name} ...", end=" ", flush=True)
         nokap.from_html(
             html,
             out,
             selector="table",
-            zoom=zoom,
             expand=expand,
             delay=0.3,
         )
         print(f"{out.stat().st_size / 1024:.1f} KB")
         generated.append(out)
 
-    # --- PDF full-page captures (varying zoom and page sizes) ---
+    # --- PDF full-page captures (varying page sizes) ---
     page_sizes = ["letter", "a4"]
-    for zoom, page_size in itertools.product(PDF_ZOOMS, page_sizes):
-        name = f"pdf_fullpage_zoom{zoom}_{page_size}.pdf"
+    for page_size in page_sizes:
+        name = f"pdf_fullpage_{page_size}.pdf"
         out = OUTPUT_DIR / name
         print(f"  {name} ...", end=" ", flush=True)
         nokap.from_html(
             html,
             out,
-            zoom=zoom,
             delay=0.3,
             page_size=page_size,
             print_background=True,
