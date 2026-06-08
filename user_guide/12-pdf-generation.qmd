@@ -10,7 +10,7 @@ Generate PDFs with configurable page size, margins, orientation, and background 
 
 ## Basic PDF Capture
 
-Any `webshot()` call with a `.pdf` output extension generates a PDF instead of a screenshot:
+nokap determines the output format from the file extension. Any `webshot()` or `from_html()` call with a `.pdf` output extension generates a PDF instead of a raster screenshot (no separate function or mode switch is required):
 
 ```{python}
 #| eval: false
@@ -21,7 +21,7 @@ nokap.webshot("https://example.com", "page.pdf")
 
 ## Page Size
 
-Control the paper size with the `page_size` parameter:
+For full-page PDFs, the `page_size` parameter controls the paper dimensions. This affects how content is paginated and how much fits on each page:
 
 ```{python}
 #| eval: false
@@ -73,7 +73,7 @@ The default margin is `0.5` inches on all sides.
 
 ## Orientation
 
-Use `landscape=True` for landscape orientation:
+By default, PDFs render in portrait orientation. Use `landscape=True` to rotate the page, which is useful for wide content like data tables or charts that benefit from extra horizontal space:
 
 ```{python}
 #| eval: false
@@ -82,7 +82,7 @@ nokap.webshot("https://example.com", "wide.pdf", landscape=True)
 
 ## Print Background
 
-By default, CSS background colors and images are not included in PDFs. Enable them with `print_background`:
+Chrome's print-to-PDF follows the same convention as physical printing: CSS background colors and images are omitted by default to save ink. For web content where backgrounds are part of the design (styled tables, colored headings, etc.), enable them explicitly:
 
 ```{python}
 #| eval: false
@@ -93,17 +93,19 @@ nokap.webshot(
 )
 ```
 
-## Scale
+## A Note on Scale
 
-~~The `zoom` parameter controls the PDF scale factor:~~
+Unlike raster screenshots where `zoom` controls pixel density, PDFs are a vector format: text and graphics are stored as scalable geometry, not pixels. This means PDFs always render at the highest possible resolution regardless of any scale setting.
 
 :::{.callout-note}
-The `zoom` parameter is ignored for PDF output. PDFs are vector format and always render at full resolution regardless of scale. Use `zoom` only for raster screenshots (PNG, JPEG, WebP) where it controls pixel density.
+The `zoom` parameter is ignored for PDF output. Use `zoom` only for raster screenshots (PNG, JPEG, WebP) where it controls output pixel density and sharpness on HiDPI displays.
 :::
 
 ## Element-Bounded PDF
 
-When you combine a `.pdf` output with a `selector`, nokap produces a tightly-bounded PDF sized to fit just that element (with selectable text preserved). This is ideal for exporting tables or charts into presentations where you need vector quality without an entire page of whitespace.
+One of nokap's most powerful features is the ability to produce a PDF that's sized exactly to a specific element rather than a standard paper size. When you combine a `.pdf` output with a `selector`, nokap produces a tightly-bounded PDF with the paper dimensions matched to the element's bounding box. The text remains fully selectable and searchable (unlike a raster screenshot embedded in a PDF).
+
+This is the feature to reach for when you need to place a table or chart into a presentation (Keynote, PowerPoint, Google Slides) at vector quality, or when you want a compact PDF that contains only the content you care about.
 
 ```{python}
 #| eval: false
@@ -111,15 +113,18 @@ When you combine a `.pdf` output with a `selector`, nokap produces a tightly-bou
 nokap.webshot("report.html", "table.pdf", selector="table", expand=10)
 ```
 
-The element-bounded PDF works by:
+Under the hood, the element-bounded PDF works by:
 
-1. Measuring the element's bounding box
-2. Setting the PDF paper size to exactly match the element dimensions
-3. Isolating the element for print rendering
+1. Measuring the element's bounding box in CSS pixels
+2. Setting the PDF paper size to exactly match those dimensions (converted to inches)
+3. Injecting print-specific CSS to isolate the element and hide surrounding content
+4. Rendering via Chrome's `Page.printToPDF` with zero page margins
+
+The result is a single-page PDF where the page boundary coincides with the element boundary (plus any `expand` padding you specify).
 
 ### With `from_html()`
 
-This is the primary integration point for tools like Great Tables:
+For packages that generate HTML programmatically (like Great Tables, Plotly, or custom report builders) `from_html()` is the natural entry point. Pass the HTML string and a selector to extract just the relevant element as a vector PDF:
 
 ```{python}
 #| eval: false
@@ -133,7 +138,7 @@ nokap.from_html(html, "table.pdf", selector="table", expand=5)
 
 ### Expand / Padding
 
-The `expand` parameter adds even whitespace around the element in the PDF:
+The `expand` parameter adds even whitespace around the element in the PDF. This is purely a visual affordance and it gives the content some breathing room so it doesn't feel jammed against the edges when placed into a slide or document:
 
 ```{python}
 #| eval: false
@@ -149,11 +154,11 @@ nokap.from_html(html, "asym.pdf", selector="table", expand=(10, 20, 10, 20))
 
 ### Backgrounds
 
-Element-bounded PDFs include CSS backgrounds by default (since styled tables and charts need them). Full-page PDFs do not include backgrounds unless `print_background=True` is specified.
+Element-bounded PDFs include CSS backgrounds by default. This is intentional: when you're exporting a styled table or chart, the background colors, borders, and shading are typically essential to the visual design. Full-page PDFs follow Chrome's printing convention and omit backgrounds unless you explicitly set `print_background=True`.
 
 ### Wide Tables
 
-nokap automatically detects when a table (or other element with intrinsic width) is being constrained by the viewport. It widens the viewport to let the element render at its natural size, then sizes the PDF to fit. No manual `vwidth` adjustment is needed. So even very wide tables with many columns render completely.
+A common challenge with table-to-PDF export is that wide tables get clipped when they exceed the viewport width. nokap handles this automatically: it detects when an element's natural width is being constrained by the viewport, temporarily widens the viewport to let the content expand, then sizes the PDF paper to fit the full element. No manual `vwidth` adjustment is needed (even very wide tables with dozens of columns render completely).
 
 ```{python}
 #| eval: false
@@ -170,6 +175,8 @@ nokap.from_html(html, "wide_table.pdf", selector="table", expand=5)
 
 ## Full-Page PDF vs Element-Bounded PDF
 
+To summarize the two PDF modes and when to reach for each:
+
 | | Full-Page PDF | Element-Bounded PDF |
 |--|--|--|
 | **Trigger** | `.pdf` output, no selector | `.pdf` output + `selector` |
@@ -178,9 +185,11 @@ nokap.from_html(html, "wide_table.pdf", selector="table", expand=5)
 | **Backgrounds** | Off by default | On by default |
 | **Use case** | Print a document | Export a table/chart for slides |
 
+Both modes produce true vector PDFs with selectable text. The choice comes down to whether you want a traditional paginated document or a compact, element-sized artifact for embedding elsewhere.
+
 ## PDF from HTML Strings
 
-Combine `from_html()` with a `.pdf` extension:
+Just as with screenshots, you can generate a full-page PDF directly from an HTML string using `from_html()`. This is convenient for generating documents from templates or programmatic HTML without writing to a temporary file yourself:
 
 ```{python}
 #| eval: false
@@ -202,6 +211,8 @@ nokap.from_html(html, "invoice.pdf", page_size="a4", margins=1.0)
 
 ## Complete Example
 
+Here's a full-page PDF capture with all common options specified explicitly, showing how the parameters work together:
+
 ```{python}
 #| eval: false
 nokap.webshot(
@@ -211,8 +222,17 @@ nokap.webshot(
     margins=(1.0, 0.75, 1.0, 0.75),
     landscape=False,
     print_background=True,
-    zoom=1,
 )
+```
+
+And an element-bounded PDF workflow for exporting a styled table to a presentation:
+
+```{python}
+#| eval: false
+from great_tables import GT, exibble
+
+html = GT(exibble).as_raw_html(make_page=True, all_important=True)
+nokap.from_html(html, "table_for_slides.pdf", selector="table", expand=10)
 ```
 
 ## Next Steps
