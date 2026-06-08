@@ -168,3 +168,106 @@ def info() -> None:
             "Install Chrome, Chromium, or set the CHROME_PATH environment variable."
         )
         sys.exit(1)
+
+
+@cli.command()
+def doctor() -> None:
+    """Run a full diagnostic: find Chrome, launch it, and test a capture.
+
+    Goes beyond `nokap info` by actually launching headless Chrome, creating a
+    tab, rendering a test page, and capturing a screenshot. Reports timing for
+    each step so you can identify bottlenecks in CI or slow environments.
+    """
+    import platform
+    import time
+    from importlib.metadata import version
+
+    click.echo("nokap doctor")
+    click.echo("=" * 40)
+    click.echo(f"nokap version: {version('nokap')}")
+    click.echo(f"Python: {sys.version.split()[0]}")
+    click.echo(f"Platform: {current_platform()} ({platform.platform()})")
+    click.echo("")
+
+    # Step 1: Find Chrome
+    click.echo("1. Finding Chrome...", nl=False)
+    t0 = time.perf_counter()
+    try:
+        chrome_path = find_chrome()
+    except ChromeNotFoundError:
+        click.echo(" FAIL")
+        click.echo(
+            "   Chrome/Chromium not found. Install it or set CHROME_PATH."
+        )
+        sys.exit(1)
+    elapsed = (time.perf_counter() - t0) * 1000
+    click.echo(f" OK ({elapsed:.0f}ms)")
+    click.echo(f"   Path: {chrome_path}")
+
+    # Step 2: Launch Chrome
+    click.echo("2. Launching headless Chrome...", nl=False)
+    t0 = time.perf_counter()
+    try:
+        nokap.webshot.__module__  # Force module load
+        from nokap._api import _get_browser
+
+        browser = _get_browser()
+    except Exception as e:
+        click.echo(f" FAIL")
+        click.echo(f"   {e}")
+        sys.exit(1)
+    elapsed = (time.perf_counter() - t0) * 1000
+    click.echo(f" OK ({elapsed:.0f}ms)")
+    click.echo(f"   WebSocket: {browser.ws_url}")
+
+    # Step 3: Test a capture
+    import tempfile
+
+    click.echo("3. Test capture (HTML → PNG)...", nl=False)
+    t0 = time.perf_counter()
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".png", delete=False) as f:
+            out_path = Path(f.name)
+        nokap.from_html(
+            "<html><body><h1>nokap doctor test</h1></body></html>",
+            out_path,
+            delay=0,
+        )
+        size = out_path.stat().st_size
+        out_path.unlink()
+    except Exception as e:
+        click.echo(f" FAIL")
+        click.echo(f"   {e}")
+        sys.exit(1)
+    finally:
+        nokap.close()
+    elapsed = (time.perf_counter() - t0) * 1000
+    click.echo(f" OK ({elapsed:.0f}ms, {size / 1024:.1f} KB)")
+
+    # Step 4: Test element-bounded PDF
+    click.echo("4. Test capture (HTML → element PDF)...", nl=False)
+    t0 = time.perf_counter()
+    try:
+        with tempfile.NamedTemporaryFile(suffix=".pdf", delete=False) as f:
+            out_path = Path(f.name)
+        nokap.from_html(
+            "<html><body><table><tr><td>A</td><td>B</td></tr></table></body></html>",
+            out_path,
+            selector="table",
+            delay=0,
+        )
+        size = out_path.stat().st_size
+        out_path.unlink()
+    except Exception as e:
+        click.echo(f" FAIL")
+        click.echo(f"   {e}")
+        sys.exit(1)
+    finally:
+        nokap.close()
+    elapsed = (time.perf_counter() - t0) * 1000
+    click.echo(f" OK ({elapsed:.0f}ms, {size / 1024:.1f} KB)")
+
+    click.echo("")
+    click.echo("All checks passed.")
+
+
