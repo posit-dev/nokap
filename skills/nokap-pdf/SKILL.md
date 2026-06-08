@@ -170,6 +170,6 @@ nokap from-html data.html table.pdf -s "table" -e 5
 
 ## Resources
 
-- [Full documentation](https://rich-iannone.github.io/nokap/)
-- [PDF generation guide](https://rich-iannone.github.io/nokap/user-guide/12-pdf-generation.html)
-- [llms-full.txt](https://rich-iannone.github.io/nokap/llms-full.txt): complete reference
+- [Full documentation](https://posit-dev.github.io/nokap/)
+- [PDF generation guide](https://posit-dev.github.io/nokap/user-guide/12-pdf-generation.html)
+- [llms-full.txt](https://posit-dev.github.io/nokap/llms-full.txt): complete reference

@@ -152,7 +152,7 @@ great-docs skill install nokap --agent copilot
 great-docs skill install nokap --agent claude
 
 # Or use the standard protocol
-npx skills add https://rich-iannone.github.io/nokap/
+npx skills add https://posit-dev.github.io/nokap/
 ```
 
 ### Available Skills

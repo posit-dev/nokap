@@ -7,7 +7,7 @@ _Screenshots and PDFs from web pages. Powered by headless Chrome._
 [![Python Versions](https://img.shields.io/pypi/pyversions/nokap.svg)](https://pypi.org/project/nokap/)
 [![PyPI](https://img.shields.io/pypi/v/nokap?logo=python&logoColor=white&color=orange)](https://pypi.org/project/nokap/)
 [![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://choosealicense.com/licenses/mit/)
-[![CI](https://github.com/rich-iannone/nokap/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/rich-iannone/nokap/actions/workflows/ci.yml)
+[![CI](https://github.com/posit-dev/nokap/actions/workflows/ci.yml/badge.svg?branch=main)](https://github.com/posit-dev/nokap/actions/workflows/ci.yml)
 
 </div>
 

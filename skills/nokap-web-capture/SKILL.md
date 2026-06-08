@@ -190,6 +190,6 @@ nokap webshot https://example.com app.png -d 3.0
 
 ## Resources
 
-- [Full documentation](https://rich-iannone.github.io/nokap/)
-- [Screenshots guide](https://rich-iannone.github.io/nokap/user-guide/10-screenshots.html)
-- [Selectors guide](https://rich-iannone.github.io/nokap/user-guide/11-selectors-and-clipping.html)
+- [Full documentation](https://posit-dev.github.io/nokap/)
+- [Screenshots guide](https://posit-dev.github.io/nokap/user-guide/10-screenshots.html)
+- [Selectors guide](https://posit-dev.github.io/nokap/user-guide/11-selectors-and-clipping.html)

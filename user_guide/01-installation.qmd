@@ -26,7 +26,7 @@ This installs nokap and its single runtime dependency (`websockets`).
 ## Installing from Source
 
 ```bash
-git clone https://github.com/rich-iannone/nokap.git
+git clone https://github.com/posit-dev/nokap.git
 cd nokap
 pip install -e ".[dev]"
 ```

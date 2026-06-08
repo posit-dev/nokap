@@ -52,10 +52,10 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/rich-iannone/nokap"
-Repository = "https://github.com/rich-iannone/nokap"
-Documentation = "https://rich-iannone.github.io/nokap/"
-"Bug Tracker" = "https://github.com/rich-iannone/nokap/issues"
+Homepage = "https://github.com/posit-dev/nokap"
+Repository = "https://github.com/posit-dev/nokap"
+Documentation = "https://posit-dev.github.io/nokap/"
+"Bug Tracker" = "https://github.com/posit-dev/nokap/issues"
 
 [tool.pyright]
 include = ["nokap"]

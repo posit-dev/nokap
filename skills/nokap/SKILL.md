@@ -102,7 +102,7 @@ except nokap.NokapError as e:
 
 ## Resources
 
-- [Full documentation](https://rich-iannone.github.io/nokap/)
-- [llms.txt](https://rich-iannone.github.io/nokap/llms.txt): API overview for LLMs
-- [llms-full.txt](https://rich-iannone.github.io/nokap/llms-full.txt): Complete reference
-- [Source code](https://github.com/rich-iannone/nokap)
+- [Full documentation](https://posit-dev.github.io/nokap/)
+- [llms.txt](https://posit-dev.github.io/nokap/llms.txt): API overview for LLMs
+- [llms-full.txt](https://posit-dev.github.io/nokap/llms-full.txt): Complete reference
+- [Source code](https://github.com/posit-dev/nokap)

@@ -7,7 +7,7 @@ parser: numpy
 
 # Site
 # ----
-site_url: "https://rich-iannone.github.io/nokap/"
+site_url: "https://posit-dev.github.io/nokap/"
 
 # Dynamic Introspection
 # ---------------------
