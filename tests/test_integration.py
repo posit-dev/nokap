@@ -92,6 +92,30 @@ class TestFromHtml:
         assert result == out
         assert out.read_bytes()[:4] == b"%PDF"
 
+    def test_html_to_element_pdf(self, tmp_path):
+        """Element-bounded PDF: sized to fit the selector element."""
+        html = """
+        <html><body>
+            <div>Header content</div>
+            <table id="target" style="border-collapse:collapse;">
+                <tr><td style="border:1px solid #000;padding:8px;">Cell A</td>
+                    <td style="border:1px solid #000;padding:8px;">Cell B</td></tr>
+                <tr><td style="border:1px solid #000;padding:8px;">Cell C</td>
+                    <td style="border:1px solid #000;padding:8px;">Cell D</td></tr>
+            </table>
+            <div>Footer content</div>
+        </body></html>
+        """
+        out = tmp_path / "element.pdf"
+        result = nokap.from_html(html, out, selector="#target", expand=10)
+        assert result == out
+        assert out.exists()
+        assert out.read_bytes()[:4] == b"%PDF"
+        # Element PDF should be smaller than a full-page PDF
+        full_out = tmp_path / "full.pdf"
+        nokap.from_html(html, full_out)
+        assert out.stat().st_size < full_out.stat().st_size
+
 
 class TestGreatTables:
     """Test integration with great_tables."""
