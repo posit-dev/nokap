@@ -141,14 +141,26 @@ def capture_element_pdf(
     if selector is None and cliprect is None:
         raise ValueError("Either 'selector' or 'cliprect' must be provided.")
 
-    # Widen the viewport so elements (especially tables) can expand to their
-    # natural/intrinsic width without being constrained. This is a two-pass
-    # approach: render wide, measure, then size the PDF to fit.
-    _WIDE_VIEWPORT = 16384  # px, generous upper bound
+    # For selector-based captures, detect if the element has a natural/intrinsic
+    # width that's being constrained by the viewport (e.g., wide tables). We use
+    # a two-pass approach: widen the viewport, re-measure, and check if the
+    # element shrank (has intrinsic width) or stayed wide (fluid layout).
     if selector is not None:
-        session.set_viewport(_WIDE_VIEWPORT, session._height)
-        # Force layout reflow so the element re-renders at its natural size
-        session.evaluate("document.body.offsetHeight")
+        sel_for_measure = selector if isinstance(selector, str) else selector[0]
+        original_width = session._width
+        current_bounds = session.get_element_bounds(sel_for_measure)
+
+        if current_bounds.width >= original_width - 1:
+            _WIDE_VIEWPORT = 16384
+            session.set_viewport(_WIDE_VIEWPORT, session._height)
+            session.evaluate("document.body.offsetHeight")
+
+            # Re-measure: if element is still very wide (>= 2x original viewport),
+            # it's a fluid element that grows with the viewport — revert
+            wide_bounds = session.get_element_bounds(sel_for_measure)
+            if wide_bounds.width >= original_width * 2:
+                session.set_viewport(original_width, session._height)
+                session.evaluate("document.body.offsetHeight")
 
     # Determine the target clip region
     if selector is not None:
