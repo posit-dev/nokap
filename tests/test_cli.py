@@ -510,9 +510,7 @@ class TestBatch:
             )
         )
         out_dir = tmp_path / "output"
-        result = runner.invoke(
-            cli, ["batch", str(manifest), "-o", str(out_dir)]
-        )
+        result = runner.invoke(cli, ["batch", str(manifest), "-o", str(out_dir)])
         assert result.exit_code == 0
         assert (out_dir / "one.png").exists()
         assert (out_dir / "two.png").exists()
@@ -535,9 +533,7 @@ class TestBatch:
             )
         )
         out_dir = tmp_path / "output"
-        result = runner.invoke(
-            cli, ["batch", str(manifest), "-o", str(out_dir)]
-        )
+        result = runner.invoke(cli, ["batch", str(manifest), "-o", str(out_dir)])
         assert result.exit_code == 0
         pdf_file = out_dir / "table.pdf"
         assert pdf_file.exists()
@@ -549,9 +545,7 @@ class TestBatch:
         manifest = tmp_path / "jobs.json"
         manifest.write_text(json.dumps([{"html": "<h1>No file</h1>"}]))
         out_dir = tmp_path / "output"
-        result = runner.invoke(
-            cli, ["batch", str(manifest), "-o", str(out_dir)]
-        )
+        result = runner.invoke(cli, ["batch", str(manifest), "-o", str(out_dir)])
         assert result.exit_code == 1
         assert "0/1 succeeded" in result.output
 

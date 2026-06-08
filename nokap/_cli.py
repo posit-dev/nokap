@@ -259,9 +259,7 @@ def doctor() -> None:
         chrome_path = find_chrome()
     except ChromeNotFoundError:
         click.echo(" FAIL")
-        click.echo(
-            "   Chrome/Chromium not found. Install it or set CHROME_PATH."
-        )
+        click.echo("   Chrome/Chromium not found. Install it or set CHROME_PATH.")
         sys.exit(1)
     elapsed = (time.perf_counter() - t0) * 1000
     click.echo(f" OK ({elapsed:.0f}ms)")
@@ -348,9 +346,7 @@ def doctor() -> None:
 @click.option(
     "--selector", "-s", default=None, help="Default CSS selector for all entries."
 )
-@click.option(
-    "--expand", "-e", default=0, type=int, help="Default expand (pixels)."
-)
+@click.option("--expand", "-e", default=0, type=int, help="Default expand (pixels).")
 def batch(
     manifest: str,
     output_dir: str,
