@@ -111,32 +111,35 @@ def webshot(
     Parameters
     ----------
     url
-        URL to capture. Can be an http/https URL, a file:// URL, or a local
-        file path (automatically converted to a file URL).
+        URL to capture. Can be an http/https URL, a `file://` URL, or a local
+        file path (automatically converted to a `file://` URL).
     file
         Output file path. The format is determined by extension:
-        .png, .jpg/.jpeg, .webp for images; .pdf for PDF.
+        `.png`, `.jpg`/`.jpeg`, `.webp` for images; `.pdf` for PDF.
     vwidth
         Viewport width in pixels.
     vheight
         Viewport height in pixels.
     selector
-        CSS selector(s) to capture. The screenshot is cropped to the
-        element's bounding box. Mutually exclusive with `cliprect`.
+        CSS selector(s) to capture. For images, the screenshot is cropped to
+        the element's bounding box. For PDFs, produces an element-bounded PDF
+        sized to fit the element. Mutually exclusive with `cliprect=`.
     cliprect
         Explicit clip rectangle as (x, y, width, height) in CSS pixels.
-        Mutually exclusive with `selector`.
+        Mutually exclusive with `selector=`.
     expand
         Pixels to expand around the selector bounding box.
         Single int for all sides, or (top, right, bottom, left) tuple.
     delay
         Seconds to wait after page load before capturing.
     zoom
-        Zoom/scale factor. Values > 1 produce higher resolution images.
+        Zoom/scale factor for raster images (PNG, JPEG, WebP). Values > 1
+        produce higher resolution images. Ignored for PDF output since PDFs
+        are vector format and always render at full resolution.
     useragent
         Custom User-Agent string.
     page_size
-        Paper size for PDF output (e.g., "letter", "a4").
+        Paper size for PDF output (e.g., `"letter"`, `"a4"`).
     margins
         Margins in inches for PDF output. Single float or 4-tuple.
     landscape
@@ -240,17 +243,25 @@ def from_html(
     """
     Take a screenshot or PDF from an HTML string.
 
-    This is the primary integration point for packages like great-tables
-    that generate HTML and need to convert it to an image.
+    This is the primary integration point for packages like `great-tables`
+    that generate HTML and need to convert it to an image or PDF.
+
+    For PDF output with a selector (other than `"html"`), produces an
+    element-bounded PDF sized to fit the selected element with selectable
+    text preserved, and this is useful for embedding tables in presentations.
 
     Parameters
     ----------
     html
         The HTML content to render.
     file
-        Output file path. Format determined by extension.
+        Output file path. Format determined by extension (`.png`, `.jpg`, `.webp`
+        for images; `.pdf` for PDF).
     selector
-        CSS selector to capture (default: "html" for full page).
+        CSS selector to capture (default: `"html"` for full page). When a
+        specific selector is used with PDF output, produces a tightly-bounded
+        PDF. Wide elements (e.g., tables) are automatically detected and
+        rendered at their natural width.
     encoding
         Character encoding for the HTML file.
     **kwargs
