@@ -189,7 +189,12 @@ def webshot(
 
         # Capture
         if is_pdf:
-            if selector is not None or cliprect is not None:
+            # Use element-bounded PDF when a specific selector (not just "html")
+            # or cliprect targets a sub-region of the page
+            use_element_pdf = cliprect is not None or (
+                selector is not None and selector != "html"
+            )
+            if use_element_pdf:
                 # Element-bounded PDF: tight fit around selector/cliprect
                 return capture_element_pdf(
                     session,
