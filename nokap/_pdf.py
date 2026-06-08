@@ -95,7 +95,6 @@ def capture_element_pdf(
     selector: str | list[str] | None = None,
     cliprect: tuple[float, float, float, float] | None = None,
     expand: int | tuple[int, int, int, int] = 0,
-    scale: float = 1.0,
     print_background: bool = True,
 ) -> Path:
     """
@@ -127,8 +126,6 @@ def capture_element_pdf(
     expand
         Pixels to expand around the element bounding box. Single int for all
         sides, or (top, right, bottom, left) tuple.
-    scale
-        Scale of the page rendering (0.1 to 2.0).
     print_background
         Whether to print background graphics. Defaults to True since element
         captures typically need backgrounds (e.g., styled tables).
@@ -168,12 +165,9 @@ def capture_element_pdf(
         offset_top = exp.top
         clip = _apply_expand(clip, exp)
 
-    # Calculate paper dimensions in inches.
-    # The scale factor enlarges rendered content, so the paper must grow
-    # proportionally to avoid clipping.
-    clamped_scale = max(0.1, min(2.0, scale))
-    paper_width = (clip.width / _CSS_PX_PER_INCH) * clamped_scale
-    paper_height = (clip.height / _CSS_PX_PER_INCH) * clamped_scale
+    # Calculate paper dimensions in inches
+    paper_width = clip.width / _CSS_PX_PER_INCH
+    paper_height = clip.height / _CSS_PX_PER_INCH
 
     # Enforce minimum dimensions (Chrome requires > 0)
     paper_width = max(paper_width, 0.1)
@@ -252,7 +246,7 @@ def capture_element_pdf(
             "marginBottom": 0,
             "marginLeft": 0,
             "marginRight": 0,
-            "scale": clamped_scale,
+            "scale": 1.0,
             "printBackground": print_background,
             "displayHeaderFooter": False,
             "headerTemplate": "",
