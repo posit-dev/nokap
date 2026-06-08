@@ -1,0 +1,199 @@
+---
+title: "AI Agent Integration"
+guide-section: "Advanced Usage"
+tags: [Integration, Configuration]
+---
+
+# AI Agent Integration
+
+nokap ships with first-class support for AI coding agents through two complementary systems: an **MCP server** that lets agents capture screenshots and PDFs directly, and **agent skills** that give agents structured knowledge about how to use nokap effectively in code they write for you.
+
+## MCP Server
+
+The [Model Context Protocol](https://modelcontextprotocol.io/) (MCP) server exposes nokap's capture capabilities as tools that AI agents can call directly. This means an agent can take a screenshot, generate a PDF, or verify system readiness without you needing to write any code.
+
+### Installation
+
+Install nokap with the MCP extra:
+
+```bash
+pip install nokap[mcp]
+```
+
+### Available Tools
+
+| Tool | Purpose |
+|------|---------|
+| `screenshot_url` | Capture a screenshot from a URL or local HTML file |
+| `screenshot_html` | Capture a screenshot from a raw HTML string |
+| `generate_pdf` | Generate a full-page or element-bounded PDF |
+| `doctor` | Verify Chrome is installed and captures work |
+
+### Connecting to the Server
+
+#### Claude Desktop / Claude Code
+
+Add to your MCP configuration (`claude_desktop_config.json` or project `.mcp.json`):
+
+```json
+{
+  "mcpServers": {
+    "nokap": {
+      "command": "python",
+      "args": ["-m", "mcp.run", "nokap.mcp:server"]
+    }
+  }
+}
+```
+
+#### VS Code (GitHub Copilot)
+
+Add to `.vscode/mcp.json` in your project:
+
+```json
+{
+  "servers": {
+    "nokap": {
+      "command": "python",
+      "args": ["-m", "mcp.run", "nokap.mcp:server"]
+    }
+  }
+}
+```
+
+### Tool Reference
+
+#### `screenshot_url`
+
+Captures a web page or local HTML file as an image:
+
+```
+screenshot_url(
+  url: str,              # URL or local file path (required)
+  file: str,             # Output path (default: "screenshot.png")
+  selector: str,         # CSS selector to capture specific element
+  vwidth: int,           # Viewport width (default: 992)
+  vheight: int,          # Viewport height (default: 744)
+  zoom: float,           # Scale factor for HiDPI (default: 1)
+  expand: int,           # Padding around selector in pixels (default: 0)
+  delay: float,          # Seconds to wait after load (default: 0.2)
+)
+```
+
+#### `screenshot_html`
+
+Renders raw HTML to an image, which is ideal for capturing output from packages like Great Tables or Plotly:
+
+```
+screenshot_html(
+  html: str,             # HTML content to render (required)
+  file: str,             # Output path (default: "screenshot.png")
+  selector: str,         # CSS selector (default: "html")
+  vwidth: int,           # Viewport width (default: 992)
+  vheight: int,          # Viewport height (default: 744)
+  zoom: float,           # Scale factor (default: 1)
+  expand: int,           # Padding in pixels (default: 0)
+  delay: float,          # Wait after load (default: 0.2)
+)
+```
+
+#### `generate_pdf`
+
+Produces PDFs in two modes: full-page (standard paper) or element-bounded (sized to content):
+
+```
+generate_pdf(
+  source: str,           # URL, file path, or raw HTML (required)
+  file: str,             # Output path (default: "output.pdf")
+  selector: str,         # Element selector for bounded PDF
+  page_size: str,        # Paper size: letter, a4, legal, etc.
+  landscape: bool,       # Landscape orientation (default: false)
+  margins: float,        # Margins in inches (default: 0.5)
+  print_background: bool,# Print CSS backgrounds (default: false)
+  expand: int,           # Padding for element-bounded PDF (default: 0)
+  vwidth: int,           # Viewport width (default: 992)
+  delay: float,          # Wait after load (default: 0.2)
+)
+```
+
+#### `doctor`
+
+Checks system readiness. No parameters and returns Chrome path, version, and runs a test capture to confirm everything works.
+
+### Prompts
+
+The MCP server also provides prompt templates for common workflows:
+
+| Prompt | Purpose |
+|--------|---------|
+| `capture_strategy` | Get recommendations on format, selector, and settings for a specific use case |
+| `batch_capture` | Generate a batch-capture script tailored to your data source |
+
+### Resources
+
+| URI | Description |
+|-----|-------------|
+| `nokap://capabilities` | JSON summary of supported formats, paper sizes, and features |
+
+## Agent Skills
+
+nokap publishes [agent skills](https://agentskills.io/), which are structured context files that tell AI coding agents how to use the package correctly. Skills are complementary to the MCP server: while MCP lets agents *call* nokap tools directly, skills help agents write *better nokap code* for you.
+
+### Installing Skills
+
+If you use nokap in a project and want your AI agent to have context about it:
+ 
+```bash
+# Auto-detect your agent and install
+great-docs skill install nokap
+
+# Or target a specific agent
+great-docs skill install nokap --agent copilot
+great-docs skill install nokap --agent claude
+
+# Or use the standard protocol
+npx skills add https://rich-iannone.github.io/nokap/
+```
+
+### Available Skills
+
+nokap provides four focused skills, each covering a different aspect of the package:
+
+| Skill | Focus | When it activates |
+|-------|-------|-------------------|
+| `nokap` | Primary overview: decision table, API summary, gotchas | Any nokap usage |
+| `nokap-web-capture` | Capturing from live URLs: viewports, timing, selectors | Web page screenshots |
+| `nokap-html-capture` | Rendering HTML strings: Great Tables, Plotly integration | `from_html()` usage |
+| `nokap-pdf` | PDF generation: paper sizes, element-bounded PDFs | PDF output |
+
+### What Skills Contain
+
+Each skill is a concise cheat sheet that encodes:
+
+- **Decision tables**: mapping common tasks to the right function and parameters
+- **Gotchas**: mistakes agents make without guidance (e.g., `zoom` is ignored for PDFs)
+- **Code examples**: patterns for the most common workflows
+- **Boundaries**: what nokap can and cannot do
+
+### Multi-Skill Mode
+
+The four skills are designed to work together. An agent connected to a project with all four installed can quickly determine:
+
+1. Which function to call (`webshot` vs `from_html`)
+2. What format to use (PNG vs PDF)
+3. How to configure selectors, zoom, and timing
+4. What gotchas to avoid
+
+## Using Both Together
+
+The MCP server and skills serve different purposes and work best in combination:
+
+| Scenario | Best approach |
+|----------|--------------|
+| Agent needs to take a screenshot right now | MCP tool: `screenshot_url` |
+| Agent is writing a script that captures images | Skill: guides correct API usage |
+| Agent needs to verify Chrome works | MCP tool: `doctor` |
+| Agent is deciding between PNG and PDF | Skill: decision tables + MCP prompt: `capture_strategy` |
+| Agent needs to generate batch capture code | MCP prompt: `batch_capture` + skill: code patterns |
+
+The MCP server handles *execution* while skills handle *knowledge*. Together they give agents everything they need to work with nokap effectively.
