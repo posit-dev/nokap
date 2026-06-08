@@ -9,7 +9,10 @@ try:
 except RuntimeError:
     HAS_CHROME = False
 
-pytestmark = pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed")
+pytestmark = [
+    pytest.mark.integration,
+    pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed"),
+]
 
 
 @pytest.fixture(autouse=True)

@@ -54,7 +54,7 @@ jobs:
         run: pip install -e ".[dev]" great_tables pandas
 
       - name: Run unit tests
-        run: pytest tests/ -v --ignore=tests/test_integration.py --ignore=tests/test_errors.py
+        run: pytest tests/ -v -m "not integration"
 
   integration-test:
     runs-on: ${{ matrix.os }}
@@ -80,7 +80,7 @@ jobs:
         run: pip install -e ".[dev]" great_tables pandas
 
       - name: Run integration tests
-        run: pytest tests/test_integration.py tests/test_errors.py -v --timeout=120
+        run: pytest tests/ -v -m integration --timeout=120
 
   build:
     name: Build distribution

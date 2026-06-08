@@ -130,6 +130,7 @@ class TestFromHtmlHelp:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed")
 class TestWebshotIntegration:
     def test_screenshot_url(self, runner, tmp_path):
@@ -289,6 +290,7 @@ class TestWebshotIntegration:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed")
 class TestFromHtmlIntegration:
     def test_basic_html_file(self, runner, tmp_path):
@@ -396,6 +398,7 @@ class TestFromHtmlIntegration:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed")
 class TestCLIErrorHandling:
     def test_webshot_invalid_selector_exits_1(self, runner, tmp_path):
@@ -474,6 +477,7 @@ class TestCLIOptionValidation:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed")
 class TestDoctor:
     def test_doctor_passes(self, runner):
@@ -495,6 +499,7 @@ class TestDoctor:
 # ---------------------------------------------------------------------------
 
 
+@pytest.mark.integration
 @pytest.mark.skipif(not HAS_CHROME, reason="Chrome not installed")
 class TestBatch:
     def test_batch_html_jobs(self, runner, tmp_path):
