@@ -49,7 +49,7 @@ from nokap import ChromeNotFoundError
 try:
     nokap.webshot("https://example.com", "out.png")
 except ChromeNotFoundError:
-    print("Please install Chrome or set CHROME_PATH")
+    print("Please install Chrome, run `nokap install-chrome`, or set CHROME_PATH")
 ```
 
 **Fix:** Install Chrome/Chromium, run `nokap install-chrome` to download `chrome-headless-shell`, or set the `CHROME_PATH` environment variable.
