@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 from typing import cast
@@ -7,10 +8,14 @@ from typing import cast
 import click
 
 import nokap
-from nokap._browser import find_chrome
-from nokap._errors import ChromeNotFoundError
+from nokap._browser import find_chrome, is_headless_shell
+from nokap._errors import ChromeNotFoundError, NokapError
 from nokap._types import PaperSize
 from nokap._utils import current_platform
+
+
+def _browser_type(path: str) -> str:
+    return "chrome-headless-shell" if is_headless_shell(path) else "full browser"
 
 
 @click.group(invoke_without_command=True)
@@ -172,6 +177,45 @@ def from_html(
         nokap.close()
 
 
+@cli.command("install-chrome")
+@click.option(
+    "--version",
+    "version_",
+    default="stable",
+    show_default=True,
+    help="Channel (stable, beta, dev, canary), milestone (e.g., 156), or version.",
+)
+@click.option("--force", is_flag=True, help="Reinstall even if already present.")
+def install_chrome(version_: str, force: bool) -> None:
+    """Download chrome-headless-shell from Chrome for Testing.
+
+    chrome-headless-shell is Chrome's standalone headless build. It starts
+    faster than full Chrome and works inside macOS sandboxes (such as those
+    used by coding agents) where full Chrome aborts. nokap uses it
+    automatically once installed; CHROME_PATH still takes precedence.
+
+    The browser goes into nokap's cache directory (set NOKAP_CACHE_DIR to
+    change it). Nothing is downloaded unless you run this command.
+
+    \b
+    Examples:
+      nokap install-chrome
+      nokap install-chrome --version 156
+      nokap install-chrome --version beta --force
+    """
+    click.echo(f"Installing chrome-headless-shell ({version_})...")
+    try:
+        path = nokap.install_chrome(version_, force=force)
+    except NokapError as e:
+        click.echo(f"Error: {e}", err=True)
+        sys.exit(1)
+    click.echo(f"Installed: {path}")
+
+    env_path = os.environ.get("CHROME_PATH")
+    if env_path and env_path != path:
+        click.echo(f"Note: CHROME_PATH is set ({env_path}) and takes precedence.")
+
+
 @cli.command()
 def info() -> None:
     """Display system info and whether a compatible browser is found.
@@ -197,6 +241,7 @@ def info() -> None:
     try:
         chrome_path = find_chrome()
         click.echo(f"Browser found: {chrome_path}")
+        click.echo(f"Browser type: {_browser_type(chrome_path)}")
 
         # Try to get the version
         try:
@@ -215,7 +260,8 @@ def info() -> None:
     except ChromeNotFoundError:
         click.echo("Browser found: No")
         click.echo(
-            "Install Chrome, Chromium, or set the CHROME_PATH environment variable."
+            "Install Chrome or Chromium, run 'nokap install-chrome', or set the "
+            "CHROME_PATH environment variable."
         )
         sys.exit(1)
 
@@ -260,11 +306,18 @@ def doctor() -> None:
         chrome_path = find_chrome()
     except ChromeNotFoundError:
         click.echo(" FAIL")
-        click.echo("   Chrome/Chromium not found. Install it or set CHROME_PATH.")
+        click.echo(
+            "   Chrome/Chromium not found. Install it, run 'nokap install-chrome', "
+            "or set CHROME_PATH."
+        )
         sys.exit(1)
     elapsed = (time.perf_counter() - t0) * 1000
     click.echo(f" OK ({elapsed:.0f}ms)")
     click.echo(f"   Path: {chrome_path}")
+    click.echo(f"   Type: {_browser_type(chrome_path)}")
+    extra_args = os.environ.get("NOKAP_CHROME_ARGS")
+    if extra_args:
+        click.echo(f"   NOKAP_CHROME_ARGS: {extra_args}")
 
     # Step 2: Launch Chrome
     click.echo("2. Launching headless Chrome...", nl=False)
@@ -277,6 +330,11 @@ def doctor() -> None:
     except Exception as e:
         click.echo(" FAIL")
         click.echo(f"   {e}")
+        if not is_headless_shell(chrome_path) and "install-chrome" not in str(e):
+            click.echo(
+                "   If full Chrome can't start here, try chrome-headless-shell: "
+                "run 'nokap install-chrome'."
+            )
         sys.exit(1)
     elapsed = (time.perf_counter() - t0) * 1000
     click.echo(f" OK ({elapsed:.0f}ms)")
