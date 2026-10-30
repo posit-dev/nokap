@@ -10,6 +10,7 @@ from nokap._browser import (
     Chrome,
     _env_chrome_args,
     _sandbox_hint,
+    _split_args,
     find_chrome,
     is_headless_shell,
 )
@@ -141,6 +142,22 @@ def test_env_chrome_args():
     with patch.dict(os.environ, {}):
         os.environ.pop("NOKAP_CHROME_ARGS", None)
         assert _env_chrome_args() == []
+
+
+@pytest.mark.parametrize("windows", [False, True])
+def test_split_args_quoting(windows):
+    value = """--a --lang="en US" '--b=c d' --e#f"""
+    assert _split_args(value, windows) == ["--a", "--lang=en US", "--b=c d", "--e#f"]
+
+
+def test_split_args_backslashes():
+    value = r'--user-data-dir=C:\tmp\nokap --x="C:\Program Files\y"'
+    assert _split_args(value, windows=True) == [
+        r"--user-data-dir=C:\tmp\nokap",
+        r"--x=C:\Program Files\y",
+    ]
+    # POSIX shells treat backslash as an escape
+    assert _split_args(r"--a=b\ c", windows=False) == ["--a=b c"]
 
 
 def test_del_is_safe_on_uninitialized_instance():
