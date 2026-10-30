@@ -52,7 +52,7 @@ except ChromeNotFoundError:
     print("Please install Chrome or set CHROME_PATH")
 ```
 
-**Fix:** Install Chrome/Chromium, or set the `CHROME_PATH` environment variable.
+**Fix:** Install Chrome/Chromium, run `nokap install-chrome` to download `chrome-headless-shell`, or set the `CHROME_PATH` environment variable.
 
 ### ChromeStartError
 
@@ -69,7 +69,9 @@ except ChromeStartError as e:
     print(f"Chrome stderr: {e.stderr}")
 ```
 
-**Fix:** Check that Chrome runs from the command line. On Linux CI, you may need `--no-sandbox` (nokap sets this automatically).
+**Fix:** Check that Chrome runs from the command line. To pass extra flags such as `--no-sandbox` (sometimes needed when running as root in Linux containers), set the `NOKAP_CHROME_ARGS` environment variable.
+
+Inside a macOS agent sandbox, the error message includes a hint about what the sandbox blocked. The usual fixes are `nokap install-chrome` (full Chrome can't start there) and allowing localhost binding. If the sandbox denies Chrome's mach service registration, nokap retries with `--single-process` automatically. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments).
 
 ### NavigationError
 
