@@ -33,7 +33,7 @@ nokap's architecture is intentionally simple:
 3. **Capture**: Creates a tab, navigates, waits, then calls `Page.captureScreenshot` or `Page.printToPDF`
 4. **Cleanup**: Closes the tab; Chrome stays running for reuse until `nokap.close()` or process exit
 
-The entire package has a single runtime dependency: [`websockets`](https://pypi.org/project/websockets/).
+The entire package has two runtime dependencies: [`websockets`](https://pypi.org/project/websockets/) and [`click`](https://pypi.org/project/click/) (for the CLI).
 
 ## Key Features
 
@@ -50,6 +50,7 @@ The entire package has a single runtime dependency: [`websockets`](https://pypi.
 | **CLI** | `nokap webshot` and `nokap from-html` commands |
 | **Auto-cleanup** | Chrome process managed via `atexit` |
 | **Jupyter-safe** | Works in notebooks (no event loop conflicts) |
+| **Sandbox-friendly** | Runs in macOS agent sandboxes with `chrome-headless-shell` |
 
 ## Next Steps
 
