@@ -20,6 +20,8 @@ Install nokap with the MCP extra:
 pip install nokap[mcp]
 ```
 
+The extra installs `mcp` 1.x. The server doesn't support `mcp` 2.0 yet.
+
 ### Available Tools
 
 | Tool | Purpose |
@@ -118,7 +120,11 @@ generate_pdf(
 
 #### `doctor`
 
-Checks system readiness. No parameters and returns Chrome path, version, and runs a test capture to confirm everything works.
+Checks system readiness. It takes no parameters. It returns the browser's path and version and whether it's `chrome-headless-shell`, then runs a test capture to confirm everything works. If no browser is found, the result includes a hint to run `nokap install-chrome` or set `CHROME_PATH`.
+
+### Running Inside an Agent Sandbox
+
+Coding agents often run commands inside an OS sandbox. On macOS, full Chrome can't start there, so install `chrome-headless-shell` with `nokap install-chrome` and allow the sandbox to bind localhost ports. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments) for the details.
 
 ### Prompts
 
