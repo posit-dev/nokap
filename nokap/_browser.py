@@ -122,10 +122,24 @@ def _default_chrome_args(port: int, headless: bool = True) -> list[str]:
     return args
 
 
+def _split_args(value: str, windows: bool = False) -> list[str]:
+    """
+    Split a command-line string with shell-style quoting.
+
+    On Windows, backslashes are kept literally so paths like `C:\\dir` survive.
+    """
+    lexer = shlex.shlex(value, posix=True)
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    if windows:
+        lexer.escape = ""
+    return list(lexer)
+
+
 def _env_chrome_args() -> list[str]:
     """Extra Chrome arguments from the NOKAP_CHROME_ARGS environment variable."""
     value = os.environ.get("NOKAP_CHROME_ARGS", "").strip()
-    return shlex.split(value, posix=os.name != "nt") if value else []
+    return _split_args(value, windows=os.name == "nt") if value else []
 
 
 def is_headless_shell(path: str) -> bool:
