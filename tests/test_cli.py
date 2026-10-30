@@ -495,6 +495,43 @@ class TestDoctor:
 
 
 # ---------------------------------------------------------------------------
+# install-chrome command
+# ---------------------------------------------------------------------------
+
+
+class TestInstallChrome:
+    def test_install_chrome(self, runner, monkeypatch):
+        calls = []
+
+        def fake_install(version, *, force=False):
+            calls.append((version, force))
+            return "/cache/chrome-headless-shell"
+
+        monkeypatch.setattr(nokap, "install_chrome", fake_install)
+        monkeypatch.delenv("CHROME_PATH", raising=False)
+        result = runner.invoke(cli, ["install-chrome", "--version", "156", "--force"])
+        assert result.exit_code == 0
+        assert "Installed: /cache/chrome-headless-shell" in result.output
+        assert calls == [("156", True)]
+
+    def test_install_chrome_notes_chrome_path(self, runner, monkeypatch):
+        monkeypatch.setattr(nokap, "install_chrome", lambda v, force=False: "/cache/x")
+        monkeypatch.setenv("CHROME_PATH", "/usr/bin/chromium")
+        result = runner.invoke(cli, ["install-chrome"])
+        assert result.exit_code == 0
+        assert "CHROME_PATH is set" in result.output
+
+    def test_install_chrome_failure(self, runner, monkeypatch):
+        def fail(version, *, force=False):
+            raise nokap.NokapError("offline")
+
+        monkeypatch.setattr(nokap, "install_chrome", fail)
+        result = runner.invoke(cli, ["install-chrome"])
+        assert result.exit_code == 1
+        assert "Error: offline" in result.output
+
+
+# ---------------------------------------------------------------------------
 # batch command
 # ---------------------------------------------------------------------------
 
