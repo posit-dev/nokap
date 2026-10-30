@@ -21,7 +21,7 @@ nokap requires:
 pip install nokap
 ```
 
-This installs nokap and its single runtime dependency (`websockets`).
+This installs nokap and its two runtime dependencies (`websockets` and `click`).
 
 ## Installing from Source
 
@@ -158,7 +158,7 @@ print(f"Chrome found at: {path}")
 
 ## Next Steps
 
-nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: just one runtime dependency and a Chrome installation. Everything else (browser launch, WebSocket connection, tab management) is handled internally.
+nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: two small runtime dependencies and a Chrome installation. Everything else (browser launch, WebSocket connection, tab management) is handled internally.
 
 - [Quick Start](02-quick-start.qmd): Take your first screenshot
 
