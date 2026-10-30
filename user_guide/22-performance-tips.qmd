@@ -25,6 +25,8 @@ nokap.webshot("page2.html", "out2.png")
 
 **Tip:** Don't call `nokap.close()` between sequential captures.
 
+**Tip:** `chrome-headless-shell` (installed with `nokap install-chrome`) usually starts faster than full Chrome, which helps when every run launches a fresh browser, as in CI jobs or short scripts.
+
 ## Batch Processing
 
 For many screenshots, keep Chrome alive across the entire batch:
