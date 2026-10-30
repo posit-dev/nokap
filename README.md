@@ -11,7 +11,7 @@ _Screenshots and PDFs from web pages. Powered by headless Chrome._
 
 </div>
 
-**nokap** captures screenshots and PDFs from web pages (or local HTML) using headless Chrome via the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). It doesn't need Selenium or Playwright. We use just one lightweight dependency (`websockets`).
+**nokap** captures screenshots and PDFs from web pages (or local HTML) using headless Chrome via the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). It doesn't need Selenium or Playwright. Its only runtime dependencies are `websockets` and `click`.
 
 ## Installation
 
@@ -19,7 +19,13 @@ _Screenshots and PDFs from web pages. Powered by headless Chrome._
 pip install nokap
 ```
 
-Chrome or Chromium must be installed on the system. **nokap** will hunt it down pretty quickly.
+**nokap** uses the Chrome or Chromium already on your system and will hunt it down pretty quickly. If you don't have one, or you're running inside a sandbox where full Chrome can't start (such as a coding agent's sandbox on macOS), install Chrome's standalone headless build:
+
+```bash
+nokap install-chrome
+```
+
+This downloads `chrome-headless-shell` from [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/) into nokap's cache, and nokap uses it from then on. Nothing is downloaded unless you run this command. Check your setup with `nokap doctor`.
 
 ## Quick Start
 
@@ -83,6 +89,18 @@ Shut down the background Chrome process. Called automatically at exit, but avail
 nokap.close()
 ```
 
+### `nokap.install_chrome()`
+
+Download `chrome-headless-shell` into nokap's cache and return its path. Same as `nokap install-chrome` on the command line.
+
+```python
+nokap.install_chrome(
+    version="stable",   # Channel (stable/beta/dev/canary), milestone ("156"), or exact version
+    *,
+    force=False,        # Reinstall even if already present
+)
+```
+
 ## How It Works
 
 nokap communicates directly with Chrome over the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) via WebSockets. No browser driver binaries, no heavyweight automation frameworks.
@@ -108,17 +126,29 @@ The architecture:
 | **Custom User-Agent** | Override the browser UA string |
 | **Auto-cleanup** | Chrome process managed via `atexit` |
 | **Jupyter-safe** | Works in notebooks (no event loop conflicts) |
+| **Sandbox-friendly** | Runs in macOS agent sandboxes with `chrome-headless-shell` |
+
+## Browser Discovery
+
+nokap uses the first browser it finds, in this order:
+
+1. `CHROME_PATH`
+2. `chrome-headless-shell` installed by `nokap install-chrome`
+3. `chrome-headless-shell` on `PATH`
+4. Chrome, Chromium, or another Chromium-based browser (such as Edge) in its standard install location
 
 ## Configuration
 
 | Environment Variable | Purpose |
 |---------------------|---------|
 | `CHROME_PATH` | Override Chrome binary location |
+| `NOKAP_CHROME_ARGS` | Extra Chrome command-line flags for every launch (shell-style quoting) |
+| `NOKAP_CACHE_DIR` | Where `nokap install-chrome` stores browsers |
 
 ## Requirements
 
 - Python ≥ 3.10
-- Chrome or Chromium installed on the system
+- Chrome or Chromium installed on the system, or `chrome-headless-shell` installed with `nokap install-chrome`
 
 ## License
 
