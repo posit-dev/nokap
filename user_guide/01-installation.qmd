@@ -13,7 +13,7 @@ This guide covers installing nokap and setting up Chrome on your system. You'll 
 nokap requires:
 
 - **Python ≥ 3.10**
-- **Chrome or Chromium** installed on the system
+- **Chrome or Chromium** installed on the system, or `chrome-headless-shell` installed with `nokap install-chrome`
 
 ## Installing from PyPI
 
@@ -35,11 +35,16 @@ The `[dev]` extra includes testing and linting tools (pytest, ruff, pyright).
 
 ## Chrome Setup
 
-nokap needs a system-installed Chrome or Chromium browser. It does **not** download or bundle a browser.
+nokap uses a system-installed Chrome or Chromium browser. It doesn't bundle a browser, and it only downloads one if you ask it to with `nokap install-chrome` (see [chrome-headless-shell](#chrome-headless-shell)).
 
 ### Automatic Discovery
 
-nokap searches for Chrome in platform-specific locations:
+nokap looks for a browser in this order:
+
+1. The `CHROME_PATH` environment variable
+2. `chrome-headless-shell` installed by `nokap install-chrome` (the newest version, if there are several)
+3. `chrome-headless-shell` on `PATH`
+4. Platform-specific locations for Chrome, Chromium, and other Chromium-based browsers:
 
 :::{.callout-note collapse="true" title="Platform search paths"}
 
@@ -73,6 +78,47 @@ Set the `CHROME_PATH` environment variable to use a specific browser:
 export CHROME_PATH="/usr/bin/chromium-browser"
 ```
 
+### chrome-headless-shell
+
+`chrome-headless-shell` is Chrome's standalone headless build, published by the [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/) project. It starts faster than full Chrome and runs in places where full Chrome can't, such as the macOS sandboxes used by coding agents. Install it with:
+
+```bash
+nokap install-chrome                 # latest stable
+nokap install-chrome --version 156   # latest release of a milestone
+nokap install-chrome --version 156.0.8078.80
+```
+
+Or from Python:
+
+```{python}
+#| eval: false
+import nokap
+
+path = nokap.install_chrome()
+```
+
+The browser goes into nokap's cache directory: `~/Library/Caches/nokap` on macOS, `$XDG_CACHE_HOME/nokap` (or `~/.cache/nokap`) on Linux, and `%LOCALAPPDATA%\nokap\Cache` on Windows. Set `NOKAP_CACHE_DIR` to use a different location. Once installed, nokap uses it automatically unless `CHROME_PATH` is set.
+
+### Extra Chrome Arguments
+
+To pass extra command-line flags to every Chrome launch (including the one behind `GT.gtsave()`, which doesn't take browser options), set `NOKAP_CHROME_ARGS`. The value is split like a shell command line:
+
+```bash
+export NOKAP_CHROME_ARGS="--no-sandbox --lang=de"
+```
+
+These come after nokap's default flags and before any `extra_args` passed to `Chrome()`.
+
+### Sandboxed Environments
+
+Agent sandboxes on macOS (Seatbelt-based tools such as mcp-console or the Claude Code sandbox) block things Chrome normally relies on. To render inside one:
+
+- **Use chrome-headless-shell.** Full Chrome registers itself with LaunchServices at startup; the sandbox denies that and Chrome aborts (exit code -6, no error output). `chrome-headless-shell` doesn't register, so run `nokap install-chrome` outside the sandbox first.
+- **Allow binding to localhost.** nokap talks to Chrome over a local DevTools port. In mcp-console, set `sandbox.network.allow_local_binding: true`.
+- **Single-process mode is automatic.** The sandbox also denies the mach service registration that multi-process Chrome uses (`bootstrap_check_in ... Permission denied`). When nokap sees that error, it relaunches Chrome once with `--single-process`.
+
+If a launch still fails, `nokap doctor` shows the error along with a hint about what the sandbox blocked.
+
 ### CI Environments
 
 On Ubuntu CI runners (GitHub Actions), install Chrome with:
@@ -82,6 +128,13 @@ On Ubuntu CI runners (GitHub Actions), install Chrome with:
   uses: browser-actions/setup-chrome@v1
   with:
     chrome-version: stable
+```
+
+Or install `chrome-headless-shell` with nokap itself:
+
+```yaml
+- name: Install chrome-headless-shell
+  run: nokap install-chrome
 ```
 
 ## Verifying the Installation
@@ -105,7 +158,7 @@ print(f"Chrome found at: {path}")
 
 ## Next Steps
 
-nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: just one runtime dependency and a system Chrome installation. Everything else (browser launch, WebSocket connection, tab management) is handled internally.
+nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: just one runtime dependency and a Chrome installation. Everything else (browser launch, WebSocket connection, tab management) is handled internally.
 
 - [Quick Start](02-quick-start.qmd): Take your first screenshot
 

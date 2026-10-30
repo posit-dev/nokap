@@ -6,7 +6,7 @@ tags: [CLI, Tutorial]
 
 # The CLI
 
-nokap includes a command-line interface for capturing screenshots and PDFs without writing Python. The CLI exposes the same capabilities as the Python API through four commands, making it easy to integrate nokap into shell scripts, Makefiles, and CI pipelines. All screenshot and PDF options are available as command-line flags with sensible defaults.
+nokap includes a command-line interface for capturing screenshots and PDFs without writing Python. The CLI exposes the same capabilities as the Python API through five commands, making it easy to integrate nokap into shell scripts, Makefiles, and CI pipelines. All screenshot and PDF options are available as command-line flags with sensible defaults.
 
 ## Overview
 
@@ -16,6 +16,7 @@ nokap includes a command-line interface for capturing screenshots and PDFs witho
 | `nokap from-html` | Render an HTML file to an image or PDF |
 | `nokap doctor` | Run full diagnostics (launch Chrome, test captures) |
 | `nokap batch` | Process multiple capture jobs from a JSON manifest |
+| `nokap install-chrome` | Download `chrome-headless-shell` into nokap's cache |
 
 There are also two informational commands: `nokap info` (quick system check) and `nokap --version`.
 
@@ -240,6 +241,7 @@ Platform: macos (macOS-14.0-arm64)
 
 1. Finding Chrome... OK (0ms)
    Path: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
+   Type: full browser
 2. Launching headless Chrome... OK (210ms)
    WebSocket: ws://127.0.0.1:51234/devtools/browser/abc123
 3. Test capture (HTML → PNG)... OK (320ms, 8.6 KB)
@@ -265,6 +267,27 @@ $ nokap doctor
 2. Launching headless Chrome... FAIL
    ChromeStartError: Chrome process exited immediately (exit code 1)
 ```
+
+If `NOKAP_CHROME_ARGS` is set, step 1 shows its value. When a launch fails inside a sandbox, the error includes a hint about what was blocked. If the browser is full Chrome, `doctor` also suggests trying `chrome-headless-shell` (see `nokap install-chrome` below).
+
+## `nokap install-chrome`
+
+The `install-chrome` command downloads `chrome-headless-shell`, Chrome's standalone headless build, from [Chrome for Testing](https://googlechromelabs.github.io/chrome-for-testing/) into nokap's cache directory. Once installed, nokap uses it ahead of any system Chrome (`CHROME_PATH` still takes precedence). It starts faster than full Chrome and works in macOS agent sandboxes where full Chrome can't start. nokap never downloads a browser unless you run this command.
+
+```bash
+nokap install-chrome                          # latest stable
+nokap install-chrome --version beta           # a channel: stable, beta, dev, canary
+nokap install-chrome --version 156            # latest release of a milestone
+nokap install-chrome --version 156.0.8078.80  # an exact version
+nokap install-chrome --force                  # reinstall
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `--version` | `stable` | Channel, milestone, or exact version |
+| `--force` | off | Reinstall even if this version is already present |
+
+Running it again for a version that's already installed does nothing. Set `NOKAP_CACHE_DIR` to change where browsers are stored. The same function is available from Python as `nokap.install_chrome()`.
 
 ## `nokap batch`
 
