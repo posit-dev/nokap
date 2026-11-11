@@ -188,6 +188,13 @@ def test_capture_recovers_and_removes_dead_browser_profile(tmp_path, monkeypatch
     assert not list(tmp_path.glob("nokap-chrome-*"))
 
 
+@pytest.mark.skipif(
+    sys.platform != "darwin",
+    reason=(
+        "Mach registration is macOS-only; do not force Linux Chrome "
+        "through a simulated macOS recovery"
+    ),
+)
 def test_mach_denial_retries_pipe_without_leaking_profiles(tmp_path, monkeypatch):
     import tempfile
 
