@@ -85,7 +85,7 @@ nokap.close()
 
 ## How It Works
 
-nokap communicates directly with Chrome over the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) via WebSockets. No browser driver binaries, no heavyweight automation frameworks.
+By default, nokap communicates directly with Chrome over the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) via WebSockets. No browser driver binaries, no heavyweight automation frameworks.
 
 The architecture:
 
@@ -111,9 +111,23 @@ The architecture:
 
 ## Configuration
 
-| Environment Variable | Purpose |
-|---------------------|---------|
-| `CHROME_PATH` | Override Chrome binary location |
+| Environment Variable | Purpose                                                                |
+| -------------------- | ---------------------------------------------------------------------- |
+| `CHROME_PATH`        | Override Chrome binary location                                        |
+| `NOKAP_TRANSPORT`    | CDP transport: `websocket` (default) or `pipe` (POSIX only)            |
+| `NOKAP_CHROME_ARGS`  | Additional Chrome arguments as a JSON array of strings (default: `[]`) |
+
+Use pipe transport when the sandbox denies local TCP binding:
+
+```bash
+NOKAP_TRANSPORT=pipe python render.py
+```
+
+In pipe mode, nokap starts Chrome with `--remote-debugging-pipe` and a temporary profile. CDP commands and responses use inherited file descriptors, so nokap does not open a listening TCP port or connect to one. This also applies to libraries that call nokap, including Great Tables' `GT.gtsave()`.
+
+The sandbox must still allow the selected browser to start and write temporary files. For MCP Console on macOS, use `chrome-headless-shell` with `NOKAP_CHROME_ARGS='["--single-process"]'`. See the [MCP Console example](user_guide/23-ai-agent-integration.qmd#mcp-console) for setup and returning a Great Tables table as an MCP image without changing sandbox permissions.
+
+Configuration is read when a browser starts. Call `nokap.close()` before changing it in a running Python session. When constructing `Chrome` directly, explicit `transport=` and `extra_args=` arguments override their environment settings.
 
 ## Requirements
 

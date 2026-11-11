@@ -135,6 +135,57 @@ The MCP server also provides prompt templates for common workflows:
 |-----|-------------|
 | `nokap://capabilities` | JSON summary of supported formats, paper sizes, and features |
 
+## MCP Console
+
+[MCP Console](https://github.com/posit-dev/mcp-console) can run Great Tables in its sandbox and return the rendered table as an MCP image through its existing matplotlib support.
+
+On macOS, use the separate [Chrome headless shell](https://developer.chrome.com/docs/automation-and-testing/headless-chrome-shell). The regular Chrome application still needs desktop services when started with `--headless`. Install headless shell outside the sandbox, for example:
+
+```bash
+npx @puppeteer/browsers install chrome-headless-shell@stable
+```
+
+In the Console Python session, configure nokap before the first capture, using the executable path reported by the installer:
+
+```{python}
+#| eval: false
+import os
+import nokap
+
+nokap.close()
+os.environ["CHROME_PATH"] = "/absolute/path/to/chrome-headless-shell"
+os.environ["NOKAP_TRANSPORT"] = "pipe"
+os.environ["NOKAP_CHROME_ARGS"] = '["--single-process"]'
+```
+
+Pipes avoid a local TCP listener. `--single-process` keeps the browser and renderer in one process, avoiding the Mach service registration that the macOS sandbox denies. Console's filesystem and network restrictions still apply. This recipe was verified on macOS; pipe transport requires POSIX and is not supported on Windows.
+
+With `great-tables`, `pandas`, and `matplotlib` available in the Python session:
+
+```{python}
+#| eval: false
+import matplotlib.pyplot as plt
+import pandas as pd
+from great_tables import GT
+
+table = GT(pd.DataFrame({"Region": ["North", "South"], "Revenue": [18240, 15750]}))
+table = table.tab_header(title="Quarterly sales").fmt_currency(columns="Revenue")
+try:
+    table.gtsave("table.png")
+finally:
+    nokap.close()
+
+pixels = plt.imread("table.png")
+height, width = pixels.shape[:2]
+figure = plt.figure(figsize=(width / 100, height / 100), dpi=100)
+figure.figimage(pixels)
+plt.show()
+```
+
+Console captures the figure and returns an `image/png` content item to the MCP client. Evaluating a `GT` or Pillow image object alone does not trigger that capture. The figure above adds no axes and preserves the rendered table's dimensions.
+
+A complete example is available in [`examples/mcp_console.py`](../examples/mcp_console.py).
+
 ## Agent Skills
 
 nokap publishes [agent skills](https://agentskills.io/), which are structured context files that tell AI coding agents how to use the package correctly. Skills are complementary to the MCP server: while MCP lets agents *call* nokap tools directly, skills help agents write *better nokap code* for you.
