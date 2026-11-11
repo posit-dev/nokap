@@ -124,7 +124,7 @@ Checks system readiness. It takes no parameters. It returns the browser's path a
 
 ### Running Inside an Agent Sandbox
 
-Coding agents often run commands inside an OS sandbox. On macOS, full Chrome can't start there, so install `chrome-headless-shell` with `nokap install-chrome` and set `NOKAP_TRANSPORT=pipe` to communicate without a localhost listener. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments) for the details.
+Coding agents often run commands inside an OS sandbox. On macOS, full Chrome can't start there, so install `chrome-headless-shell` with `nokap install-chrome` outside the sandbox. nokap uses pipes by default on macOS and Linux, without a localhost listener. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments) for the details.
 
 ### Prompts
 
@@ -151,19 +151,9 @@ On macOS, use the separate [Chrome headless shell](https://developer.chrome.com/
 nokap install-chrome
 ```
 
-In the Console Python session, configure nokap before the first capture. It discovers the installed headless shell automatically; `CHROME_PATH` can select a different installation.
+nokap discovers the installed headless shell and uses pipes automatically. If the sandbox denies Mach service registration, nokap retries once with `--single-process`, keeping the browser and renderer in one process. `CHROME_PATH` can select a different browser installation.
 
-```{python}
-#| eval: false
-import os
-import nokap
-
-nokap.close()
-os.environ["NOKAP_TRANSPORT"] = "pipe"
-os.environ["NOKAP_CHROME_ARGS"] = "--single-process"
-```
-
-Pipes avoid a local TCP listener. `--single-process` keeps the browser and renderer in one process, avoiding the Mach service registration that the macOS sandbox denies. Console's filesystem and network restrictions still apply. This recipe was verified on macOS; pipe transport requires POSIX and is not supported on Windows.
+Console's filesystem and network restrictions still apply. This recipe was verified on macOS; pipe transport requires POSIX and is not supported on Windows.
 
 With `great-tables`, `pandas`, and `matplotlib` available in the Python session:
 
@@ -172,6 +162,8 @@ With `great-tables`, `pandas`, and `matplotlib` available in the Python session:
 import matplotlib.pyplot as plt
 import pandas as pd
 from great_tables import GT
+
+import nokap
 
 table = GT(pd.DataFrame({"Region": ["North", "South"], "Revenue": [18240, 15750]}))
 table = table.tab_header(title="Quarterly sales").fmt_currency(columns="Revenue")

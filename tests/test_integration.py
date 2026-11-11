@@ -1,3 +1,5 @@
+import sys
+
 import pytest
 
 import nokap
@@ -20,6 +22,42 @@ def cleanup():
     """Ensure browser is closed after each test."""
     yield
     nokap.close()
+
+
+@pytest.mark.parametrize(
+    ("environment", "explicit", "expected"),
+    [
+        (None, None, "websocket" if sys.platform == "win32" else "pipe"),
+        ("websocket", None, "websocket"),
+        ("pipe", "websocket", "websocket"),
+        pytest.param(
+            "pipe",
+            None,
+            "pipe",
+            marks=pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipes"),
+        ),
+        pytest.param(
+            "websocket",
+            "pipe",
+            "pipe",
+            marks=pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipes"),
+        ),
+    ],
+)
+def test_chrome_transport(monkeypatch, environment, explicit, expected):
+    if environment is None:
+        monkeypatch.delenv("NOKAP_TRANSPORT", raising=False)
+    else:
+        monkeypatch.setenv("NOKAP_TRANSPORT", environment)
+    with nokap.Chrome(transport=explicit) as chrome:
+        assert chrome.transport == expected
+        if expected == "websocket":
+            assert chrome.ws_url.startswith(f"ws://127.0.0.1:{chrome.port}/")
+        else:
+            with pytest.raises(RuntimeError, match="no WebSocket URL"):
+                _ = chrome.ws_url
+            with pytest.raises(RuntimeError, match="no debugging port"):
+                _ = chrome.port
 
 
 class TestWebshot:

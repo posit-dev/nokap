@@ -14,8 +14,8 @@ pytestmark = [
 
 
 @pytest.fixture(autouse=True)
-def pipe_transport(monkeypatch):
-    monkeypatch.setenv("NOKAP_TRANSPORT", "pipe")
+def default_pipe_transport(monkeypatch):
+    monkeypatch.delenv("NOKAP_TRANSPORT", raising=False)
 
     def reject_tcp(self, address):
         raise AssertionError("Rendering must not bind or connect a TCP socket")

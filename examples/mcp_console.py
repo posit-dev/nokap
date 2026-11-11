@@ -1,8 +1,9 @@
-"""Run in an MCP Console Python cell after configuring the browser.
+"""Run in an MCP Console Python cell after installing the browser.
 
-On macOS, set CHROME_PATH to chrome-headless-shell, NOKAP_TRANSPORT to pipe,
-and NOKAP_CHROME_ARGS to '--single-process'. Requires great-tables,
-pandas, matplotlib, and this version of nokap in the Console environment.
+On macOS, run `nokap install-chrome` outside the sandbox first. nokap discovers
+the installed headless shell, uses pipes, and retries with --single-process
+if the sandbox denies Mach service registration. Requires great-tables, pandas,
+matplotlib, and this version of nokap in the Console environment.
 """
 
 import matplotlib.pyplot as plt

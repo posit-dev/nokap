@@ -99,6 +99,29 @@ path = nokap.install_chrome()
 
 The browser goes into nokap's cache directory: `~/Library/Caches/nokap` on macOS, `$XDG_CACHE_HOME/nokap` (or `~/.cache/nokap`) on Linux, and `%LOCALAPPDATA%\nokap\Cache` on Windows. Set `NOKAP_CACHE_DIR` to use a different location. Once installed, nokap uses it automatically unless `CHROME_PATH` is set.
 
+### DevTools Transport
+
+nokap uses pipes by default on macOS and Linux, and WebSockets on Windows. Pipes communicate through inherited file descriptors without opening a local TCP listener. Pipe transport requires POSIX and is not supported on Windows.
+
+Set `NOKAP_TRANSPORT` to `pipe` or `websocket` to override the default. For example, to use WebSockets on macOS or Linux:
+
+```bash
+NOKAP_TRANSPORT=websocket python render.py
+```
+
+An explicit `Chrome(transport=...)` argument takes precedence over the environment variable. `Chrome.port` and `Chrome.ws_url` are only available with WebSocket transport:
+
+```{python}
+#| eval: false
+import nokap
+
+with nokap.Chrome(transport="websocket") as browser:
+    print(browser.port)
+    print(browser.ws_url)
+```
+
+Configuration is read when a browser starts. Call `nokap.close()` before changing it in a running Python session.
+
 ### Extra Chrome Arguments
 
 To pass extra command-line flags to every Chrome launch (including the one behind `GT.gtsave()`, which doesn't take browser options), set `NOKAP_CHROME_ARGS`. The value is split like a shell command line:
@@ -114,7 +137,7 @@ These come after nokap's default flags and before any `extra_args` passed to `Ch
 Agent sandboxes on macOS (Seatbelt-based tools such as mcp-console or the Claude Code sandbox) block things Chrome normally relies on. To render inside one:
 
 - **Use chrome-headless-shell.** Full Chrome registers itself with LaunchServices at startup; the sandbox denies that and Chrome aborts (exit code -6, no error output). `chrome-headless-shell` doesn't register, so run `nokap install-chrome` outside the sandbox first.
-- **Use pipes when localhost binding is denied.** Set `NOKAP_TRANSPORT=pipe` to communicate with Chrome through inherited file descriptors. This requires POSIX and avoids changing the sandbox's network permissions. WebSocket transport remains the default.
+- **Pipes are the default.** On macOS and Linux, nokap communicates with Chrome through inherited file descriptors without binding a localhost port. No transport setting or change to the sandbox's network permissions is needed.
 - **Single-process mode is automatic.** The sandbox also denies the mach service registration that multi-process Chrome uses (`bootstrap_check_in ... Permission denied`). When nokap sees that error, it relaunches Chrome once with `--single-process`.
 
 If a launch still fails, `nokap doctor` shows the error along with a hint about what the sandbox blocked.
@@ -158,7 +181,7 @@ print(f"Chrome found at: {path}")
 
 ## Next Steps
 
-nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: two small runtime dependencies and a Chrome installation. Everything else (browser launch, WebSocket connection, tab management) is handled internally.
+nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: two small runtime dependencies and a Chrome installation. Everything else (browser launch, CDP connection, tab management) is handled internally.
 
 - [Quick Start](02-quick-start.qmd): Take your first screenshot
 

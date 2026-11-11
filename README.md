@@ -103,12 +103,12 @@ nokap.install_chrome(
 
 ## How It Works
 
-By default, nokap communicates directly with Chrome over the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/) via WebSockets. No browser driver binaries, no heavyweight automation frameworks.
+nokap communicates directly with Chrome over the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/), using pipes by default on macOS and Linux and WebSockets on Windows. No browser driver binaries, no heavyweight automation frameworks.
 
 The architecture:
 
-1. **Launch**: Finds and starts headless Chrome with a random debugging port
-2. **Connect**: Opens a WebSocket to Chrome's CDP endpoint
+1. **Launch**: Finds and starts headless Chrome with pipes or a debugging port
+2. **Connect**: Opens the connection to Chrome's CDP endpoint
 3. **Capture**: Creates a tab, navigates, waits, then calls `Page.captureScreenshot` or `Page.printToPDF`
 4. **Cleanup**: Closes the tab; Chrome stays running for reuse until `nokap.close()` or process exit
 
@@ -142,21 +142,23 @@ nokap uses the first browser it finds, in this order:
 | Environment Variable | Purpose |
 |---------------------|---------|
 | `CHROME_PATH` | Override Chrome binary location |
-| `NOKAP_TRANSPORT` | CDP transport: `websocket` (default) or `pipe` (POSIX only) |
+| `NOKAP_TRANSPORT` | Override CDP transport: `pipe` (default on macOS/Linux) or `websocket` (default on Windows) |
 | `NOKAP_CHROME_ARGS` | Extra Chrome command-line flags for every launch (shell-style quoting) |
 | `NOKAP_CACHE_DIR` | Where `nokap install-chrome` stores browsers |
 
-Use pipe transport when the sandbox denies local TCP binding:
+To use WebSockets explicitly on macOS or Linux:
 
 ```bash
-NOKAP_TRANSPORT=pipe python render.py
+NOKAP_TRANSPORT=websocket python render.py
 ```
 
 In pipe mode, nokap starts Chrome with `--remote-debugging-pipe` and a temporary profile. CDP commands and responses use inherited file descriptors, so nokap does not open a listening TCP port or connect to one. This also applies to libraries that call nokap, including Great Tables' `GT.gtsave()`.
 
-The sandbox must still allow the selected browser to start and write temporary files. For MCP Console on macOS, use `chrome-headless-shell` with `NOKAP_CHROME_ARGS='--single-process'`. See the [MCP Console example](user_guide/23-ai-agent-integration.qmd#mcp-console) for setup and returning a Great Tables table as an MCP image without changing sandbox permissions.
+The sandbox must still allow the selected browser to start and write temporary files. For MCP Console on macOS, install `chrome-headless-shell` with `nokap install-chrome` outside the sandbox. nokap uses pipes automatically and retries with `--single-process` if the sandbox denies Mach service registration. See the [MCP Console example](user_guide/23-ai-agent-integration.qmd#mcp-console) for returning a Great Tables table as an MCP image without changing sandbox permissions.
 
 Configuration is read when a browser starts. Call `nokap.close()` before changing it in a running Python session. When constructing `Chrome` directly, explicit `transport=` overrides `NOKAP_TRANSPORT`; `extra_args=` are appended after `NOKAP_CHROME_ARGS`.
+
+`Chrome.port` and `Chrome.ws_url` require WebSocket transport. Use `Chrome(transport="websocket")` when you need those properties. Pipe transport requires POSIX and is not supported on Windows.
 
 ## Requirements
 

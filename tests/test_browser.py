@@ -181,7 +181,7 @@ def test_port_bind_failure_explains_sandbox(tmp_path):
         ),
         pytest.raises(ChromeStartError, match="allow_local_binding"),
     ):
-        Chrome(path=str(tmp_path / "chrome"))
+        Chrome(path=str(tmp_path / "chrome"), transport="websocket")
 
 
 def test_sandbox_hint_mach_denied():
@@ -228,7 +228,10 @@ def test_launch_arg_order(tmp_path):
     chrome = _write_script(tmp_path / "chrome", _OK_BODY)
     argv = tmp_path / "argv"
     env = {"NOKAP_TEST_ARGV": str(argv), "NOKAP_CHROME_ARGS": "--env-a --env-b"}
-    with patch.dict(os.environ, env), Chrome(path=chrome, extra_args=["--extra"]) as c:
+    with (
+        patch.dict(os.environ, env),
+        Chrome(path=chrome, transport="websocket", extra_args=["--extra"]) as c,
+    ):
         assert c.ws_url == "ws://127.0.0.1:9/devtools/browser/fake"
         assert c.is_alive()
     (args,) = _launches(argv)
@@ -254,7 +257,7 @@ exit 133
     argv = tmp_path / "argv"
     with patch.dict(os.environ, {"NOKAP_TEST_ARGV": str(argv)}):
         os.environ.pop("NOKAP_CHROME_ARGS", None)
-        with Chrome(path=chrome) as c:
+        with Chrome(path=chrome, transport="websocket") as c:
             assert c.is_alive()
     first, second = _launches(argv)
     assert "--single-process" not in first
@@ -272,7 +275,7 @@ exit 133
     argv = tmp_path / "argv"
     env = {"NOKAP_TEST_ARGV": str(argv), "NOKAP_CHROME_ARGS": "--single-process"}
     with patch.dict(os.environ, env), pytest.raises(ChromeStartError) as excinfo:
-        Chrome(path=chrome)
+        Chrome(path=chrome, transport="websocket")
     assert "mach-register" in str(excinfo.value)
     assert MACH_DENIED in excinfo.value.stderr
     assert len(_launches(argv)) == 1
@@ -290,5 +293,5 @@ exit 1
     with patch.dict(os.environ, {"NOKAP_TEST_ARGV": str(argv)}):
         os.environ.pop("NOKAP_CHROME_ARGS", None)
         with pytest.raises(ChromeStartError, match="code 1"):
-            Chrome(path=chrome)
+            Chrome(path=chrome, transport="websocket")
     assert len(_launches(argv)) == 1

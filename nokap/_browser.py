@@ -194,8 +194,9 @@ class Chrome:
     timeout
         Maximum seconds to wait for Chrome's DevTools endpoint to become ready.
     transport
-        "websocket" or "pipe". Defaults to NOKAP_TRANSPORT, or "websocket"
-        when unset. Pipe transport requires POSIX.
+        "websocket" or "pipe". Defaults to NOKAP_TRANSPORT when set, otherwise
+        "pipe" on macOS/Linux and "websocket" on Windows. Pipe transport
+        requires POSIX. Select "websocket" to use ws_url or port.
 
     Notes
     -----
@@ -218,7 +219,10 @@ class Chrome:
         self._pipe_write: int | None = None
         self._stderr_file: BinaryIO | None = None
         self._ws_url: str | None = None
-        self._transport = transport or os.environ.get("NOKAP_TRANSPORT", "websocket")
+        default_transport = "pipe" if os.name == "posix" else "websocket"
+        self._transport = transport or os.environ.get(
+            "NOKAP_TRANSPORT", default_transport
+        )
         if self._transport not in ("websocket", "pipe"):
             raise ValueError("NOKAP_TRANSPORT must be 'websocket' or 'pipe'")
         if self._transport == "pipe" and os.name != "posix":

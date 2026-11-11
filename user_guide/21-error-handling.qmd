@@ -16,7 +16,7 @@ All nokap exceptions inherit from `NokapError`, making it easy to catch any noka
 NokapError
 ├── ChromeNotFoundError   # Chrome binary not found
 ├── ChromeStartError      # Chrome failed to start
-├── ConnectionError_      # WebSocket connection failed
+├── ConnectionError_      # CDP connection failed
 ├── NavigationError       # Page navigation failed
 ├── PageLoadTimeout       # Page didn't load in time
 ├── SelectorError         # CSS selector matched nothing
@@ -71,7 +71,7 @@ except ChromeStartError as e:
 
 **Fix:** Check that Chrome runs from the command line. To pass extra flags such as `--no-sandbox` (sometimes needed when running as root in Linux containers), set the `NOKAP_CHROME_ARGS` environment variable.
 
-Inside a macOS agent sandbox, the error message includes a hint about what the sandbox blocked. Use `nokap install-chrome` when full Chrome can't start, and set `NOKAP_TRANSPORT=pipe` when localhost binding is denied. If the sandbox denies Chrome's mach service registration, nokap retries with `--single-process` automatically. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments).
+Inside a macOS agent sandbox, the error message includes a hint about what the sandbox blocked. Use `nokap install-chrome` when full Chrome can't start. Pipes are the default on macOS and Linux and avoid localhost binding. If the sandbox denies Chrome's Mach service registration, nokap retries with `--single-process` automatically. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments).
 
 ### NavigationError
 
