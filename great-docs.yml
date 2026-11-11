@@ -45,6 +45,7 @@ reference:
       - name: Chrome
         members: true
       - find_chrome
+      - install_chrome
 
   - title: Session
     desc: Low-level browser tab and navigation control

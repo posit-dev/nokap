@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import atexit
-import json
 import os
 import re
+import shlex
 import shutil
 import subprocess
 import sys
@@ -11,11 +11,16 @@ import tempfile
 import time
 from concurrent.futures import TimeoutError as FutureTimeoutError
 from contextlib import ExitStack
-from typing import BinaryIO, cast
+from typing import BinaryIO
 
 from ._errors import ChromeNotFoundError, ChromeStartError, ConnectionError_
+from ._install import installed_headless_shell
 from ._pipe import SyncPipeCDP
 from ._utils import current_platform, find_open_port
+
+# Seatbelt denies `mach-register`, which multi-process Chrome needs to hand ports to its
+# child processes; `--single-process` avoids the rendezvous server entirely
+_MACH_DENIED = re.compile(r"bootstrap_check_in .*Permission denied")
 
 
 def find_chrome() -> str:
@@ -24,19 +29,26 @@ def find_chrome() -> str:
 
     Search order:
     1. CHROME_PATH environment variable
-    2. Platform-specific known locations
+    2. chrome-headless-shell installed by `nokap install-chrome`
+    3. chrome-headless-shell on PATH
+    4. Platform-specific known locations
 
     Returns the path to the Chrome executable.
 
     Raises
     ------
-    RuntimeError
+    ChromeNotFoundError
         If Chrome cannot be found.
     """
     # Check environment variable first
     env_path = os.environ.get("CHROME_PATH")
     if env_path and os.path.isfile(env_path):
         return env_path
+
+    # chrome-headless-shell starts faster and works in sandboxes where full Chrome can't
+    shell = installed_headless_shell() or shutil.which("chrome-headless-shell")
+    if shell:
+        return shell
 
     plat = current_platform()
 
@@ -118,6 +130,52 @@ def _default_chrome_args(port: int | None, headless: bool = True) -> list[str]:
     return args
 
 
+def _split_args(value: str, windows: bool = False) -> list[str]:
+    """
+    Split a command-line string with shell-style quoting.
+
+    On Windows, backslashes are kept literally so paths like `C:\\dir` survive.
+    """
+    lexer = shlex.shlex(value, posix=True)
+    lexer.whitespace_split = True
+    lexer.commenters = ""
+    if windows:
+        lexer.escape = ""
+    return list(lexer)
+
+
+def _env_chrome_args() -> list[str]:
+    """Extra Chrome arguments from the NOKAP_CHROME_ARGS environment variable."""
+    value = os.environ.get("NOKAP_CHROME_ARGS", "").strip()
+    return _split_args(value, windows=os.name == "nt") if value else []
+
+
+def is_headless_shell(path: str) -> bool:
+    """Whether `path` points to a chrome-headless-shell binary."""
+    return os.path.basename(path).lower().startswith("chrome-headless-shell")
+
+
+def _sandbox_hint(path: str, returncode: int, stderr: str) -> str | None:
+    """Explain launch failures that come from running inside a macOS sandbox."""
+    if _MACH_DENIED.search(stderr):
+        return (
+            "Chrome was denied mach-register, which happens inside a macOS sandbox; "
+            "it must run there with --single-process."
+        )
+    if (
+        current_platform() == "macos"
+        and returncode == -6
+        and not stderr.strip()
+        and not is_headless_shell(path)
+    ):
+        return (
+            "Full Chrome aborts like this inside a macOS sandbox, where it can't "
+            "register with LaunchServices. Run `nokap install-chrome` to use "
+            "chrome-headless-shell, which works there."
+        )
+    return None
+
+
 class Chrome:
     """
     Manages a headless Chrome browser process.
@@ -131,13 +189,18 @@ class Chrome:
     headless
         Whether to run in headless mode.
     extra_args
-        Additional command-line arguments to pass to Chrome. When None, reads
-        NOKAP_CHROME_ARGS, a JSON array of strings.
+        Additional command-line arguments to pass to Chrome. These come after any
+        arguments in the NOKAP_CHROME_ARGS environment variable.
     timeout
         Maximum seconds to wait for Chrome's DevTools endpoint to become ready.
     transport
         "websocket" or "pipe". Defaults to NOKAP_TRANSPORT, or "websocket"
         when unset. Pipe transport requires POSIX.
+
+    Notes
+    -----
+    If Chrome fails because a macOS sandbox denies it mach-register (as Seatbelt-based
+    agent sandboxes do), nokap retries once with `--single-process`.
     """
 
     def __init__(
@@ -148,6 +211,7 @@ class Chrome:
         timeout: float = 20.0,
         transport: str | None = None,
     ) -> None:
+        # Set first so close() and __del__ work if anything below raises
         self._process: subprocess.Popen[bytes] | None = None
         self._resources = ExitStack()
         self._pipe_read: int | None = None
@@ -159,48 +223,63 @@ class Chrome:
             raise ValueError("NOKAP_TRANSPORT must be 'websocket' or 'pipe'")
         if self._transport == "pipe" and os.name != "posix":
             raise NotImplementedError("Pipe transport currently requires POSIX")
-        if extra_args is None:
-            environment_args = json.loads(os.environ.get("NOKAP_CHROME_ARGS", "[]"))
-            if not isinstance(environment_args, list) or not all(
-                isinstance(argument, str)
-                for argument in cast(list[object], environment_args)
-            ):
-                raise ValueError("NOKAP_CHROME_ARGS must be a JSON array of strings")
-            extra_args = cast(list[str], environment_args)
+        self._port: int | None = None
+
         self._path = path or find_chrome()
-        self._port = find_open_port() if self._transport == "websocket" else None
         self._headless = headless
 
-        args = [self._path] + _default_chrome_args(self._port, headless)
+        args = _env_chrome_args() + list(extra_args or [])
+        try:
+            self._launch(args, timeout)
+        except ChromeStartError as e:
+            if "--single-process" in args or not _MACH_DENIED.search(e.stderr):
+                raise
+            self._launch([*args, "--single-process"], timeout)
+
+        # Register cleanup
+        atexit.register(self.close)
+
+    def _launch(self, args: list[str], timeout: float) -> None:
+        """Start Chrome and wait for DevTools, cleaning up on failure."""
+        if self._transport == "websocket":
+            try:
+                self._port = find_open_port()
+            except OSError as e:
+                raise ChromeStartError(
+                    "Could not bind a local port for Chrome's DevTools endpoint "
+                    f"({e}). "
+                    "On POSIX, set NOKAP_TRANSPORT=pipe. Alternatively, allow binding "
+                    "to localhost (for mcp-console, set "
+                    "sandbox.network.allow_local_binding: true)."
+                ) from e
+
+        cmd = [
+            self._path,
+            *_default_chrome_args(self._port, self._headless),
+        ]
         if self._transport == "pipe" and not any(
-            argument.partition("=")[0] == "--user-data-dir"
-            for argument in extra_args or []
+            argument.partition("=")[0] == "--user-data-dir" for argument in args
         ):
             profile = self._resources.enter_context(
                 tempfile.TemporaryDirectory(prefix="nokap-chrome-")
             )
-            args.append(f"--user-data-dir={profile}")
-        if extra_args:
-            args.extend(extra_args)
-        args.append("about:blank")
+            cmd.append(f"--user-data-dir={profile}")
+        cmd.extend([*args, "about:blank"])
 
         try:
             if self._transport == "pipe":
-                self._start_pipe(args)
+                self._start_pipe(cmd)
                 self._wait_for_pipe(timeout)
             else:
                 self._process = subprocess.Popen(
-                    args,
+                    cmd,
                     stdout=subprocess.DEVNULL,
                     stderr=subprocess.PIPE,
                 )
                 self._ws_url = self._wait_for_ws_url(timeout)
-        except Exception:
+        except BaseException:
             self.close()
             raise
-
-        # Register cleanup
-        atexit.register(self.close)
 
     def _start_pipe(self, args: list[str]) -> None:
         chrome_read, self._pipe_write = os.pipe()
@@ -253,9 +332,13 @@ os.execv(sys.argv[3], sys.argv[3:])
                 stderr=self.stderr,
             ) from error
         except (ConnectionError_, OSError) as error:
-            raise ChromeStartError(
-                "Chrome DevTools pipe failed to start", stderr=self.stderr
-            ) from error
+            assert self._process is not None
+            stderr = self.stderr
+            message = "Chrome DevTools pipe failed to start"
+            hint = _sandbox_hint(self._path, self._process.poll() or 0, stderr)
+            if hint:
+                message += f". {hint}"
+            raise ChromeStartError(message, stderr=stderr) from error
         finally:
             connection.close()
 
@@ -318,10 +401,11 @@ os.execv(sys.argv[3], sys.argv[3:])
             # Check if process has died
             if self._process.poll() is not None:
                 stderr_text = accumulated.decode("utf-8", errors="replace")
-                msg = (
-                    "Chrome process exited unexpectedly"
-                    f" (code {self._process.returncode})"
-                )
+                returncode = self._process.returncode
+                msg = f"Chrome process exited unexpectedly (code {returncode})"
+                hint = _sandbox_hint(self._path, returncode, stderr_text)
+                if hint:
+                    msg += f". {hint}"
                 raise ChromeStartError(msg, stderr=stderr_text)
 
             time.sleep(0.05)
@@ -386,4 +470,5 @@ os.execv(sys.argv[3], sys.argv[3:])
         self.close()
 
     def __del__(self) -> None:
-        self.close()
+        if hasattr(self, "_resources"):
+            self.close()

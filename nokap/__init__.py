@@ -11,6 +11,7 @@ from ._errors import (
     PageLoadTimeout,
     SelectorError,
 )
+from ._install import install_chrome
 from ._session import Session
 from ._types import PaperSize
 
@@ -19,6 +20,7 @@ __all__ = [
     "from_html",
     "close",
     "find_chrome",
+    "install_chrome",
     "Chrome",
     "Session",
     "NokapError",

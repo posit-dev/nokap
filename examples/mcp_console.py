@@ -1,7 +1,7 @@
 """Run in an MCP Console Python cell after configuring the browser.
 
 On macOS, set CHROME_PATH to chrome-headless-shell, NOKAP_TRANSPORT to pipe,
-and NOKAP_CHROME_ARGS to '["--single-process"]'. Requires great-tables,
+and NOKAP_CHROME_ARGS to '--single-process'. Requires great-tables,
 pandas, matplotlib, and this version of nokap in the Console environment.
 """
 

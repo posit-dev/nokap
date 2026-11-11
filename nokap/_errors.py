@@ -14,8 +14,9 @@ class ChromeNotFoundError(NokapError):
         super().__init__(
             message
             or (
-                "Chrome/Chromium not found. Install Chrome or set the CHROME_PATH "
-                "environment variable to the Chrome executable path."
+                "Chrome/Chromium not found. Install Chrome, run `nokap install-chrome` "
+                "to download chrome-headless-shell, or set the CHROME_PATH environment "
+                "variable to the Chrome executable path."
             )
         )
 

@@ -478,7 +478,7 @@ def _handle_generate_pdf(arguments: dict[str, Any]) -> list[TextContent]:
 
 def _handle_doctor(arguments: dict[str, Any]) -> list[TextContent]:
     """Handle the doctor tool: system readiness check."""
-    from nokap._browser import find_chrome
+    from nokap._browser import find_chrome, is_headless_shell
     from nokap._errors import ChromeNotFoundError
 
     results: dict[str, Any] = {
@@ -491,6 +491,7 @@ def _handle_doctor(arguments: dict[str, Any]) -> list[TextContent]:
         chrome_path = find_chrome()
         results["chrome_found"] = True
         results["chrome_path"] = str(chrome_path)
+        results["chrome_headless_shell"] = is_headless_shell(chrome_path)
 
         # Try to get Chrome version
         try:
@@ -508,6 +509,9 @@ def _handle_doctor(arguments: dict[str, Any]) -> list[TextContent]:
         results["chrome_found"] = False
         results["chrome_path"] = None
         results["chrome_version"] = None
+        results["hint"] = (
+            "Install Chrome, run `nokap install-chrome`, or set CHROME_PATH."
+        )
 
     # Test capture if Chrome is available
     if results["chrome_found"]:

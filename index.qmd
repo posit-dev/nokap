@@ -1,6 +1,6 @@
 # nokap
 
-**nokap** captures screenshots and PDFs from web pages (or local HTML) using headless Chrome via the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). It doesn't need Selenium or Playwright. We use just one lightweight dependency (`websockets`).
+**nokap** captures screenshots and PDFs from web pages (or local HTML) using headless Chrome via the [Chrome DevTools Protocol](https://chromedevtools.github.io/devtools-protocol/). It doesn't need Selenium or Playwright. Its only runtime dependencies are `websockets` and `click`.
 
 ## Install and Go
 
@@ -9,6 +9,8 @@ Get **nokap** from PyPI and start capturing screenshots immediately:
 ```bash
 pip install nokap
 ```
+
+nokap finds the Chrome or Chromium already on your system. If there isn't one, or you're working inside a sandbox where full Chrome can't start, run `nokap install-chrome` to download Chrome's standalone headless build (see [Installation](user_guide/01-installation.qmd)).
 
 Then in Python:
 
@@ -34,13 +36,14 @@ nokap from-html report.html report.png --selector "table" --zoom 2
 
 |  |  |
 |---|---|
-| **Zero heavyweight deps** | No Selenium, no Playwright: just `websockets` and Chrome |
+| **Zero heavyweight deps** | No Selenium, no Playwright: just `websockets`, `click`, and Chrome |
 | **Screenshots** | PNG, JPEG, WebP via CDP `Page.captureScreenshot` |
 | **PDF generation** | Configurable page size, margins, orientation |
 | **CSS selectors** | Capture specific elements or unions of multiple selectors |
 | **Retina quality** | Zoom/scale for 2× or 3× resolution images |
 | **CLI included** | `nokap webshot` and `nokap from-html` commands |
 | **Jupyter safe** | Works in notebooks without event loop conflicts |
+| **Sandbox friendly** | Runs in macOS agent sandboxes with `chrome-headless-shell` |
 
 : {tbl-colwidths="[30, 70]"}
 
@@ -49,11 +52,13 @@ nokap from-html report.html report.png --selector "table" --zoom 2
 | Environment Variable | Purpose |
 |---------------------|---------|
 | `CHROME_PATH` | Override Chrome binary location |
+| `NOKAP_CHROME_ARGS` | Extra Chrome command-line flags for every launch |
+| `NOKAP_CACHE_DIR` | Where `nokap install-chrome` stores browsers |
 
 ## Requirements
 
 - Python ≥ 3.10
-- Chrome or Chromium installed on the system
+- Chrome or Chromium installed on the system, or `chrome-headless-shell` installed with `nokap install-chrome`
 
 ## License
 
