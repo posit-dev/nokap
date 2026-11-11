@@ -324,9 +324,9 @@ def doctor() -> None:
     t0 = time.perf_counter()
     try:
         _ = nokap.webshot.__module__  # Force module load
-        from nokap._api import _get_browser
+        from nokap._api import _get_renderer
 
-        browser = _get_browser()
+        browser = _get_renderer().browser
     except Exception as e:
         click.echo(" FAIL")
         click.echo(f"   {e}")

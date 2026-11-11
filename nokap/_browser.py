@@ -286,7 +286,7 @@ class Chrome:
             self._path,
             *_default_chrome_args(self._port, self._headless),
         ]
-        if self._transport == "pipe" and not any(
+        if not any(
             argument.partition("=")[0] == "--user-data-dir" for argument in args
         ):
             profile = self._resources.enter_context(
