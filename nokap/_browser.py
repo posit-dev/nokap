@@ -14,6 +14,9 @@ from concurrent.futures import TimeoutError as FutureTimeoutError
 from contextlib import ExitStack
 from typing import BinaryIO
 
+from websockets.exceptions import WebSocketException
+from websockets.sync.client import connect
+
 from ._errors import ChromeNotFoundError, ChromeStartError, ConnectionError_
 from ._install import installed_headless_shell
 from ._pipe import SyncPipeCDP
@@ -238,6 +241,7 @@ class Chrome:
         self._pipe_write: int | None = None
         self._stderr_file: BinaryIO | None = None
         self._ws_url: str | None = None
+        self._ready = False
         default_transport = "pipe" if os.name == "posix" else "websocket"
         self._transport = transport or os.environ.get(
             "NOKAP_TRANSPORT", default_transport
@@ -306,6 +310,7 @@ class Chrome:
                     stderr=subprocess.PIPE,
                 )
                 self._ws_url = self._wait_for_ws_url(timeout)
+            self._ready = True
         except BaseException:
             self.close()
             raise
@@ -471,7 +476,16 @@ os.execvp(sys.argv[3], sys.argv[3:])
         return self._process.poll() is None
 
     def close(self) -> None:
-        """Terminate the Chrome process."""
+        """Shut down Chrome before removing its temporary profile."""
+        if self._ready and self.is_alive():
+            assert self._process is not None
+            try:
+                self._request_shutdown()
+                # Chrome allows its network service 10s to flush profile data.
+                self._process.wait(timeout=15)
+            except (OSError, WebSocketException, subprocess.TimeoutExpired):
+                pass
+        # Failed startup and unresponsive browsers still need termination.
         if self._process is not None and self._process.poll() is None:
             self._process.terminate()
             try:
@@ -481,6 +495,7 @@ os.execvp(sys.argv[3], sys.argv[3:])
                 self._process.wait(timeout=2)
         self._process = None
         self._ws_url = None
+        self._ready = False
         self._resources.close()
         self._pipe_read = self._pipe_write = None
         self._stderr_file = None
@@ -490,6 +505,15 @@ os.execvp(sys.argv[3], sys.argv[3:])
             atexit.unregister(self.close)
         except Exception:
             pass
+
+    def _request_shutdown(self) -> None:
+        command = '{"id":0,"method":"Browser.close"}'
+        if self._transport == "pipe":
+            # Do not compete with the caller's CDP connection for pipe responses.
+            os.write(self.pipes[1], command.encode() + b"\0")
+        else:
+            with connect(self.ws_url, open_timeout=5, close_timeout=1) as connection:
+                connection.send(command)
 
     def __enter__(self) -> Chrome:
         return self
