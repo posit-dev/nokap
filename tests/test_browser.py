@@ -1,3 +1,4 @@
+import errno
 import gc
 import os
 import stat
@@ -238,6 +239,74 @@ def test_launch_arg_order(tmp_path):
     assert args[0] == f"--remote-debugging-port={c.port}"
     assert args[-4:] == ["--env-a", "--env-b", "--extra", "about:blank"]
     assert not c.is_alive()
+
+
+@posix_only
+@pytest.mark.parametrize("unavailable", [65536, 65538, None])
+@pytest.mark.parametrize("extra_args", [[], ["--single-process"], ["--no-sandbox"]])
+def test_macos_directory_queries_select_process_mode(
+    tmp_path, monkeypatch, unavailable, extra_args
+):
+    chrome = _write_script(tmp_path / "chrome-headless-shell", _OK_BODY)
+    argv = tmp_path / "argv"
+    monkeypatch.setenv("NOKAP_TEST_ARGV", str(argv))
+    monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
+    monkeypatch.setattr("nokap._browser.current_platform", lambda: "macos")
+
+    def confstr(name):
+        if name == unavailable:
+            raise OSError(errno.EIO, "Input/output error")
+        return str(tmp_path)
+
+    monkeypatch.setattr(os, "confstr", confstr)
+    with Chrome(path=chrome, transport="websocket", extra_args=extra_args):
+        pass
+    (args,) = _launches(argv)
+    expected = int(
+        "--single-process" in extra_args
+        or (unavailable is not None and "--no-sandbox" not in extra_args)
+    )
+    assert args.count("--single-process") == expected
+
+
+@posix_only
+@pytest.mark.parametrize("platform", ["linux", "windows"])
+def test_non_macos_launch_does_not_query_darwin_directories(
+    tmp_path, monkeypatch, platform
+):
+    chrome = _write_script(tmp_path / "chrome-headless-shell", _OK_BODY)
+    argv = tmp_path / "argv"
+    monkeypatch.setenv("NOKAP_TEST_ARGV", str(argv))
+    monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
+    monkeypatch.setattr("nokap._browser.current_platform", lambda: platform)
+
+    def confstr(name):
+        raise AssertionError("Darwin directory queries require macOS")
+
+    monkeypatch.setattr(os, "confstr", confstr)
+    with Chrome(path=chrome, transport="websocket"):
+        pass
+    (args,) = _launches(argv)
+    assert "--single-process" not in args
+
+
+@posix_only
+def test_macos_directory_query_unexpected_error_is_not_recovered(tmp_path, monkeypatch):
+    chrome = _write_script(tmp_path / "chrome-headless-shell", _OK_BODY)
+    monkeypatch.setenv("NOKAP_TEST_ARGV", str(tmp_path / "argv"))
+    monkeypatch.setattr("nokap._browser.current_platform", lambda: "macos")
+    monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
+
+    def confstr(name):
+        raise OSError(errno.ENOMEM, "Cannot allocate memory")
+
+    monkeypatch.setattr(os, "confstr", confstr)
+    with (
+        pytest.raises(OSError) as error,
+        Chrome(path=chrome, transport="websocket"),
+    ):
+        pass
+    assert error.value.errno == errno.ENOMEM
 
 
 @posix_only

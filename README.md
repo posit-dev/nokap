@@ -154,7 +154,7 @@ NOKAP_TRANSPORT=websocket python render.py
 
 In pipe mode, nokap starts Chrome with `--remote-debugging-pipe` and a temporary profile. CDP commands and responses use inherited file descriptors, so nokap does not open a listening TCP port or connect to one. This also applies to libraries that call nokap, including Great Tables' `GT.gtsave()`.
 
-The sandbox must still allow the selected browser to start and write temporary files. For MCP Console on macOS, install `chrome-headless-shell` with `nokap install-chrome` outside the sandbox. nokap uses pipes automatically. The tested Console setup also needs `NOKAP_CHROME_ARGS='--single-process'`: Chrome exits without the Mach-denial diagnostic that triggers nokap's automatic retry. See the [MCP Console example](user_guide/23-ai-agent-integration.qmd#mcp-console) for returning a Great Tables table as an MCP image without changing sandbox permissions.
+The sandbox must still allow the selected browser to start and write temporary files. For MCP Console on macOS, install `chrome-headless-shell` with `nokap install-chrome` outside the sandbox. nokap uses pipes automatically and selects `--single-process` if the required macOS user-directory lookups fail with an I/O error. It also retries with `--single-process` when Chrome reports a Mach service registration denial. See the [MCP Console example](user_guide/23-ai-agent-integration.qmd#mcp-console) for returning a Great Tables table as an MCP image without changing sandbox permissions.
 
 Configuration is read when a browser starts. Call `nokap.close()` before changing it in a running Python session. When constructing `Chrome` directly, explicit `transport=` overrides `NOKAP_TRANSPORT`; `extra_args=` are appended after `NOKAP_CHROME_ARGS`.
 

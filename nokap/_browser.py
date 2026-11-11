@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import atexit
+import errno
 import os
 import re
 import shlex
@@ -155,6 +156,23 @@ def is_headless_shell(path: str) -> bool:
     return os.path.basename(path).lower().startswith("chrome-headless-shell")
 
 
+def _macos_user_dirs_unavailable() -> bool:
+    if current_platform() != "macos":
+        return False
+    try:
+        # _CS_DARWIN_USER_DIR and _CS_DARWIN_USER_CACHE_DIR from macOS unistd.h;
+        # Python accepts the values but does not expose their names. Chrome needs
+        # these paths to initialize child sandboxes. In restricted environments,
+        # confstr can fail with EIO before Chrome reports a Mach registration error.
+        for name in (65536, 65538):
+            os.confstr(name)
+    except OSError as error:
+        if error.errno != errno.EIO:
+            raise
+        return True
+    return False
+
+
 def _sandbox_hint(path: str, returncode: int, stderr: str) -> str | None:
     """Explain launch failures that come from running inside a macOS sandbox."""
     if _MACH_DENIED.search(stderr):
@@ -200,8 +218,9 @@ class Chrome:
 
     Notes
     -----
-    If Chrome fails because a macOS sandbox denies it mach-register (as Seatbelt-based
-    agent sandboxes do), nokap retries once with `--single-process`.
+    On macOS, nokap selects `--single-process` when the user-directory queries
+    needed for Chrome's child sandboxes fail with EIO. If Chrome instead reports
+    a Mach registration denial, nokap retries once with `--single-process`.
     """
 
     def __init__(
@@ -233,6 +252,12 @@ class Chrome:
         self._headless = headless
 
         args = _env_chrome_args() + list(extra_args or [])
+        if (
+            "--single-process" not in args
+            and "--no-sandbox" not in args
+            and _macos_user_dirs_unavailable()
+        ):
+            args.append("--single-process")
         try:
             self._launch(args, timeout)
         except ChromeStartError as e:

@@ -138,7 +138,7 @@ Agent sandboxes on macOS (Seatbelt-based tools such as mcp-console or the Claude
 
 - **Use chrome-headless-shell.** Full Chrome registers itself with LaunchServices at startup; the sandbox denies that and Chrome aborts (exit code -6, no error output). `chrome-headless-shell` doesn't register, so run `nokap install-chrome` outside the sandbox first.
 - **Pipes are the default.** On macOS and Linux, nokap communicates with Chrome through inherited file descriptors without binding a localhost port. No transport setting or change to the sandbox's network permissions is needed.
-- **Single-process mode is automatic.** The sandbox also denies the mach service registration that multi-process Chrome uses (`bootstrap_check_in ... Permission denied`). When nokap sees that error, it relaunches Chrome once with `--single-process`.
+- **Single-process mode is automatic.** Before launching Chrome on macOS, nokap checks the user and cache directories required by Chrome's subprocess sandbox. If either lookup fails with an I/O error, nokap uses `--single-process`. If Chrome instead reports a Mach service registration denial (`bootstrap_check_in ... Permission denied`), nokap relaunches it once with `--single-process`.
 
 If a launch still fails, `nokap doctor` shows the error along with a hint about what the sandbox blocked.
 

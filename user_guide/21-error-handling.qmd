@@ -71,7 +71,7 @@ except ChromeStartError as e:
 
 **Fix:** Check that Chrome runs from the command line. To pass extra flags such as `--no-sandbox` (sometimes needed when running as root in Linux containers), set the `NOKAP_CHROME_ARGS` environment variable.
 
-Inside a macOS agent sandbox, the error message includes a hint about what the sandbox blocked. Use `nokap install-chrome` when full Chrome can't start. Pipes are the default on macOS and Linux and avoid localhost binding. If the sandbox denies Chrome's Mach service registration, nokap retries with `--single-process` automatically. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments).
+Inside a macOS agent sandbox, the error message includes a hint about what the sandbox blocked. Use `nokap install-chrome` when full Chrome can't start. Pipes are the default on macOS and Linux and avoid localhost binding. nokap selects `--single-process` if Chrome's required macOS user-directory lookups fail with an I/O error, and retries with that flag when Chrome reports a Mach service registration denial. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments).
 
 ### NavigationError
 

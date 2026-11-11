@@ -151,24 +151,19 @@ On macOS, use the separate [Chrome headless shell](https://developer.chrome.com/
 nokap install-chrome
 ```
 
-nokap discovers the installed headless shell and uses pipes automatically. It retries once with `--single-process` when Chrome reports a Mach service registration denial. In the tested macOS Console setup, Chrome exits without that diagnostic, so set `NOKAP_CHROME_ARGS='--single-process'` before the first capture. `CHROME_PATH` can select a different browser installation.
+nokap discovers the installed headless shell and uses pipes automatically. Before launching Chrome on macOS, it checks the user and cache directories required by Chrome's subprocess sandbox. If either lookup fails with an I/O error, nokap uses `--single-process`. It also retries once with that flag when Chrome reports a Mach service registration denial. `CHROME_PATH` can select a different browser installation.
 
-Console's filesystem and network restrictions still apply. This browser configuration was verified in MCP Console's macOS sandbox with `chrome-headless-shell` 157.0.8103.50. Pipe transport requires POSIX and is not supported on Windows.
+Console's filesystem and network restrictions still apply. Automatic transport and single-process selection were verified in MCP Console's macOS sandbox with `chrome-headless-shell` 157.0.8103.50. Pipe transport requires POSIX and is not supported on Windows.
 
 With `great-tables`, `pandas`, and `matplotlib` available in the Python session:
 
 ```{python}
 #| eval: false
-import os
-
 import matplotlib.pyplot as plt
 import pandas as pd
 from great_tables import GT
 
 import nokap
-
-nokap.close()
-os.environ["NOKAP_CHROME_ARGS"] = "--single-process"
 
 table = GT(pd.DataFrame({"Region": ["North", "South"], "Revenue": [18240, 15750]}))
 table = table.tab_header(title="Quarterly sales").fmt_currency(columns="Revenue")
