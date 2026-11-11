@@ -6,6 +6,7 @@ from typing import Any
 
 from ._cdp import SyncCDP
 from ._errors import NavigationError, PageLoadTimeout, SelectorError
+from ._pipe import SyncPipeCDP
 from ._types import ClipRect
 
 
@@ -26,7 +27,9 @@ class Session:
         Initial viewport height in pixels.
     """
 
-    def __init__(self, cdp: SyncCDP, width: int = 992, height: int = 744) -> None:
+    def __init__(
+        self, cdp: SyncCDP | SyncPipeCDP, width: int = 992, height: int = 744
+    ) -> None:
         self._cdp = cdp
         self._session_id: str | None = None
         self._target_id: str | None = None

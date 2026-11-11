@@ -3,6 +3,7 @@ from __future__ import annotations
 import atexit
 import tempfile
 import time
+from concurrent.futures import TimeoutError as FutureTimeoutError
 from pathlib import Path
 from typing import Any
 
@@ -10,6 +11,7 @@ from ._browser import Chrome
 from ._cdp import SyncCDP
 from ._errors import ChromeStartError, ConnectionError_
 from ._pdf import capture_element_pdf, capture_pdf
+from ._pipe import SyncPipeCDP
 from ._screenshot import capture_screenshot
 from ._session import Session
 from ._types import PaperSize
@@ -26,7 +28,7 @@ __all__ = [
 # ---------------------------------------------------------------------------
 
 _browser: Chrome | None = None
-_cdp: SyncCDP | None = None
+_cdp: SyncCDP | SyncPipeCDP | None = None
 
 _MAX_RETRIES = 2
 
@@ -43,17 +45,29 @@ def _get_browser() -> Chrome:
             except Exception:
                 pass
             _cdp = None
+        if _browser is not None:
+            _browser.close()
         _browser = Chrome()
     return _browser
 
 
-def _get_cdp() -> SyncCDP:
+def _get_cdp() -> SyncCDP | SyncPipeCDP:
     """Get or create the module-level CDP connection, with auto-recovery."""
     global _cdp, _browser
     browser = _get_browser()
     if _cdp is None:
-        _cdp = SyncCDP(browser.ws_url)
-        _cdp.connect()
+        if browser.transport == "pipe":
+            _cdp = SyncPipeCDP(*browser.pipes)
+        else:
+            _cdp = SyncCDP(browser.ws_url)
+        try:
+            _cdp.connect()
+        except (ConnectionError_, FutureTimeoutError) as error:
+            if browser.transport == "pipe":
+                raise ChromeStartError(
+                    "Chrome DevTools pipe failed to start", stderr=browser.stderr
+                ) from error
+            raise
     return _cdp
 
 
