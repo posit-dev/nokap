@@ -1,4 +1,7 @@
+import os
+import shlex
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -58,6 +61,24 @@ def test_chrome_transport(monkeypatch, environment, explicit, expected):
                 _ = chrome.ws_url
             with pytest.raises(RuntimeError, match="no debugging port"):
                 _ = chrome.port
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX executable fixture")
+@pytest.mark.parametrize("transport", ["websocket", "pipe"])
+def test_chrome_executable_name_on_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, transport: str
+) -> None:
+    browser_path = nokap.find_chrome()
+    bin_dir = tmp_path / "browser bin"
+    bin_dir.mkdir()
+    executable = bin_dir / "browser-on-path"
+    executable.write_text(f'#!/bin/sh\nexec {shlex.quote(browser_path)} "$@"\n')
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir), prepend=os.pathsep)
+
+    with nokap.Chrome(path=executable.name, transport=transport) as browser:
+        assert browser.is_alive()
+        assert browser.transport == transport
 
 
 class TestWebshot:

@@ -331,7 +331,7 @@ os.set_inheritable(3, True)
 os.set_inheritable(4, True)
 for fd in {source_read, source_write, read_fd, write_fd} - {3, 4}:
     os.close(fd)
-os.execv(sys.argv[3], sys.argv[3:])
+os.execvp(sys.argv[3], sys.argv[3:])
 """
         try:
             self._process = subprocess.Popen(
