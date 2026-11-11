@@ -10,13 +10,13 @@ Optimize nokap for batch processing and high-throughput screenshot capture. noka
 
 ## Browser Reuse
 
-nokap keeps Chrome running between calls via a module-level singleton. The first call pays the startup cost (~200ms); subsequent calls skip browser launch entirely:
+nokap keeps Chrome running between module calls through a shared default renderer. The first call launches Chrome; subsequent calls reuse it:
 
 ```{python}
 #| eval: false
 import nokap
 
-# First call: launches Chrome (~200ms overhead)
+# First call: launches Chrome
 nokap.webshot("page1.html", "out1.png")
 
 # Second call: reuses Chrome (just navigation + capture)
@@ -29,7 +29,7 @@ nokap.webshot("page2.html", "out2.png")
 
 ## Batch Processing
 
-For many screenshots, keep Chrome alive across the entire batch:
+For many screenshots, own one renderer for the entire batch:
 
 ```{python}
 #| eval: false
@@ -38,13 +38,13 @@ from pathlib import Path
 
 html_files = Path("reports/").glob("*.html")
 
-for html_file in html_files:
-    out = html_file.with_suffix(".png")
-    nokap.webshot(html_file, out, selector="table", zoom=2)
-
-# Clean up once at the end
-nokap.close()
+with nokap.Renderer() as renderer:
+    for html_file in html_files:
+        out = html_file.with_suffix(".png")
+        renderer.webshot(html_file, out, selector="table", zoom=2)
 ```
+
+Construction launches Chrome, and leaving the block closes the browser and connection. Use separate renderer instances when tasks need independent browser settings. Each gets a separate temporary profile by default, including when using WebSockets.
 
 ## Minimize Delay
 
@@ -76,13 +76,15 @@ nokap.from_html(html, "table.png", selector="table", vwidth=600, vheight=400)
 
 ## Connection Recovery
 
-If Chrome becomes unresponsive, nokap automatically restarts it on the next call. This adds one-time latency but requires no manual intervention:
+If the shared default renderer's browser exits, the next module call without `renderer=` creates a replacement:
 
 ```{python}
 #| eval: false
-# If Chrome crashed, this transparently relaunches
+# If the shared default browser exited, this launches a replacement
 nokap.webshot("https://example.com", "recovery.png")
 ```
+
+An explicitly constructed renderer does not restart its browser. Captures raise an error after its browser exits or after `renderer.close()`; construct a new renderer to continue. Passing it through `renderer=` to a module function preserves the same lifetime rules.
 
 ## Memory Considerations
 

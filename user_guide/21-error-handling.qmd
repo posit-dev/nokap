@@ -134,7 +134,7 @@ except CDPError as e:
 
 ## Recovery Pattern
 
-nokap automatically recovers from stale connections. If Chrome crashes between calls, the next `webshot()` or `from_html()` call will relaunch Chrome transparently:
+Module calls without `renderer=` use a shared default renderer. If its browser exits between calls, the next `webshot()` or `from_html()` call creates a replacement. Calling `nokap.close()` also resets the shared default:
 
 ```{python}
 #| eval: false
@@ -143,16 +143,18 @@ import nokap
 # First call launches Chrome
 nokap.webshot("https://example.com", "first.png")
 
-# Simulate Chrome dying
+# Close the shared default renderer
 nokap.close()
 
-# Next call relaunches automatically
-nokap.webshot("https://example.com", "second.png")  # Works fine
+# Next call creates a new default renderer
+nokap.webshot("https://example.com", "second.png")
 ```
+
+An explicitly constructed `Renderer` has a fixed lifetime. Capture methods raise an error if it has been closed or its browser has exited; they do not relaunch Chrome. Passing `renderer=` to a module function preserves this behavior. Construct a new renderer to continue.
 
 ## Next Steps
 
-With a clear understanding of nokap's exception hierarchy, you can write capture code that fails gracefully (whether that means retrying on a timeout, logging a missing selector, or alerting when Chrome can't be found). The automatic recovery behavior means most transient failures resolve themselves without intervention.
+With a clear understanding of nokap's exception hierarchy, you can write capture code that fails gracefully (whether that means retrying on a timeout, logging a missing selector, or alerting when Chrome can't be found).
 
 - [Performance Tips](22-performance-tips.qmd): Optimize for high-throughput capture
 

@@ -31,10 +31,15 @@ table = (
     .fmt_percent(columns="Growth")
 )
 
-try:
-    table.gtsave("table.png")
-finally:
-    nokap.close()
+with nokap.Renderer() as renderer:
+    nokap.from_html(
+        table.as_raw_html(),
+        "table.png",
+        selector="table",
+        expand=5,
+        zoom=2,
+        renderer=renderer,
+    )
 
 # Console returns pyplot figures as MCP images. Preserve the table's pixels.
 pixels = plt.imread("table.png")

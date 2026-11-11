@@ -155,7 +155,7 @@ nokap discovers the installed headless shell and uses pipes automatically. Befor
 
 Console's filesystem and network restrictions still apply. Automatic transport and single-process selection were verified in MCP Console's macOS sandbox with `chrome-headless-shell` 157.0.8103.50. Pipe transport requires POSIX and is not supported on Windows.
 
-With `great-tables`, `pandas`, and `matplotlib` available in the Python session:
+With `great-tables`, `pandas`, and `matplotlib` available in the Python session, render the table's HTML using an explicitly owned renderer:
 
 ```{python}
 #| eval: false
@@ -167,10 +167,15 @@ import nokap
 
 table = GT(pd.DataFrame({"Region": ["North", "South"], "Revenue": [18240, 15750]}))
 table = table.tab_header(title="Quarterly sales").fmt_currency(columns="Revenue")
-try:
-    table.gtsave("table.png")
-finally:
-    nokap.close()
+with nokap.Renderer() as renderer:
+    nokap.from_html(
+        table.as_raw_html(),
+        "table.png",
+        selector="table",
+        expand=5,
+        zoom=2,
+        renderer=renderer,
+    )
 
 pixels = plt.imread("table.png")
 height, width = pixels.shape[:2]
@@ -181,6 +186,8 @@ plt.show()
 
 Console captures the figure and returns an `image/png` content item to the MCP client. Evaluating a `GT` or Pillow image object alone does not trigger that capture. The figure above adds no axes and preserves the rendered table's dimensions.
 
+`nokap.from_html()` borrows the renderer; leaving the `with` block closes it. Keep multiple captures inside the block to reuse the browser. `GT.gtsave()` remains available when the shared default renderer is sufficient; it does not accept a `renderer=` argument.
+
 A complete example is available in [`examples/mcp_console.py`](../examples/mcp_console.py).
 
 ## Agent Skills
@@ -190,7 +197,7 @@ nokap publishes [agent skills](https://agentskills.io/), which are structured co
 ### Installing Skills
 
 If you use nokap in a project and want your AI agent to have context about it:
- 
+
 ```bash
 # Auto-detect your agent and install
 great-docs skill install nokap

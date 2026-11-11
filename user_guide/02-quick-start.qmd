@@ -112,14 +112,27 @@ nokap from-html report.html report.png --selector "table" --expand 10
 
 ## Cleanup
 
-Chrome runs in the background for reuse. Clean up explicitly when done:
+Module calls share a default renderer that keeps Chrome running between captures. Close it when done:
 
 ```{python}
 #| eval: false
 nokap.close()
 ```
 
-This is called automatically at process exit, but explicit cleanup is good practice in long-running applications.
+This is called automatically at process exit. The next convenience call creates a new default renderer.
+
+To own the browser and connection for a particular task, construct a `Renderer`:
+
+```{python}
+#| eval: false
+with nokap.Renderer() as renderer:
+    renderer.from_html("<h1>First page</h1>", "first.png")
+    nokap.from_html("<h1>Second page</h1>", "second.png", renderer=renderer)
+```
+
+Construction launches Chrome immediately. Both captures reuse it, and leaving the block closes it. Module functions borrow an explicitly supplied renderer without closing it; `nokap.close()` only affects the shared default.
+
+Reuse an open renderer for a batch, or construct separate instances for independent tasks or browser settings. A renderer cannot be reused after `renderer.close()` or after its browser exits; construct a new instance to continue.
 
 ## Next Steps
 

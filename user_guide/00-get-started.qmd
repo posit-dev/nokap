@@ -31,7 +31,7 @@ nokap's architecture is intentionally simple:
 1. **Launch**: Finds and starts headless Chrome with pipes or a debugging port
 2. **Connect**: Opens the connection to Chrome's CDP endpoint
 3. **Capture**: Creates a tab, navigates, waits, then calls `Page.captureScreenshot` or `Page.printToPDF`
-4. **Cleanup**: Closes the tab; Chrome stays running for reuse until `nokap.close()` or process exit
+4. **Cleanup**: Closes the tab; Chrome stays running for reuse until its renderer is closed or the process exits
 
 The entire package has two runtime dependencies: [`websockets`](https://pypi.org/project/websockets/) and [`click`](https://pypi.org/project/click/) (for the CLI).
 

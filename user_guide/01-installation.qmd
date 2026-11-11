@@ -109,18 +109,20 @@ Set `NOKAP_TRANSPORT` to `pipe` or `websocket` to override the default. For exam
 NOKAP_TRANSPORT=websocket python render.py
 ```
 
-An explicit `Chrome(transport=...)` argument takes precedence over the environment variable. `Chrome.port` and `Chrome.ws_url` are only available with WebSocket transport:
+An explicit `transport=` argument to `Renderer` or `Chrome` takes precedence over the environment variable. `Chrome.port` and `Chrome.ws_url` are only available with WebSocket transport:
 
 ```{python}
 #| eval: false
 import nokap
 
-with nokap.Chrome(transport="websocket") as browser:
-    print(browser.port)
-    print(browser.ws_url)
+with nokap.Renderer(transport="websocket") as renderer:
+    print(renderer.browser.port)
+    print(renderer.browser.ws_url)
 ```
 
-Configuration is read when a browser starts. Call `nokap.close()` before changing it in a running Python session.
+`Renderer` starts Chrome and reads its environment settings at construction. Later environment changes do not affect that instance. Construct another renderer to use different settings. Module calls without `renderer=` use a shared default; call `nokap.close()` to reset it before changing configuration.
+
+Each browser uses a separate temporary profile by default, with either transport. Supplying `--user-data-dir` selects a profile explicitly.
 
 ### Extra Chrome Arguments
 
@@ -130,7 +132,7 @@ To pass extra command-line flags to every Chrome launch (including the one behin
 export NOKAP_CHROME_ARGS="--no-sandbox --lang=de"
 ```
 
-These come after nokap's default flags and before any `extra_args` passed to `Chrome()`.
+These come after nokap's default flags and before any `extra_args` passed to `Renderer()` or `Chrome()`. For example, `Renderer(extra_args=["--lang=de"])` adds a flag for that renderer without changing the environment.
 
 ### Sandboxed Environments
 
