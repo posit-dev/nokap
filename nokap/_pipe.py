@@ -6,6 +6,7 @@ import selectors
 import threading
 from collections.abc import Callable
 from concurrent.futures import Future
+from contextlib import ExitStack
 from typing import Any
 
 from ._errors import CDPError, ConnectionError_
@@ -15,9 +16,6 @@ class SyncPipeCDP:
     """CDP commands and events over Chrome's NUL-delimited pipe transport."""
 
     def __init__(self, read_fd: int, write_fd: int, timeout: float = 30.0) -> None:
-        self._read_fd = os.dup(read_fd)
-        self._write_fd = os.dup(write_fd)
-        self._cancel_read, self._cancel_write = os.pipe()
         self._timeout = timeout
         self._lock = threading.Lock()
         self._write_lock = threading.Lock()
@@ -27,6 +25,15 @@ class SyncPipeCDP:
         self._error: BaseException | None = None
         self._thread: threading.Thread | None = None
         self._closed = False
+        with ExitStack() as resources:
+            self._read_fd = os.dup(read_fd)
+            resources.callback(os.close, self._read_fd)
+            self._write_fd = os.dup(write_fd)
+            resources.callback(os.close, self._write_fd)
+            self._cancel_read, self._cancel_write = os.pipe()
+            resources.callback(os.close, self._cancel_read)
+            resources.callback(os.close, self._cancel_write)
+            self._resources = resources.pop_all()
 
     def connect(self) -> None:
         self._thread = threading.Thread(target=self._receive_loop, daemon=True)
@@ -129,10 +136,4 @@ class SyncPipeCDP:
         if self._thread is not None:
             self._thread.join()
         self._fail_pending(ConnectionError_("Chrome DevTools pipe is closed"))
-        for descriptor in (
-            self._read_fd,
-            self._write_fd,
-            self._cancel_read,
-            self._cancel_write,
-        ):
-            os.close(descriptor)
+        self._resources.close()

@@ -3,10 +3,13 @@ import gc
 import os
 import stat
 import sys
+import tempfile
+from pathlib import Path
 from unittest.mock import patch
 
 import pytest
 
+import nokap
 from nokap._browser import (
     Chrome,
     _env_chrome_args,
@@ -173,6 +176,65 @@ def test_failed_init_leaves_usable_instance():
     ):
         Chrome()
     gc.collect()
+
+
+@posix_only
+@pytest.mark.parametrize(
+    "failure", ["second_pipe", "stderr_file", "second_dup", "cancel_pipe"]
+)
+def test_pipe_startup_allocation_failure_closes_descriptors(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
+) -> None:
+    executable = _write_script(tmp_path / "chrome", "exec cat <&3 >/dev/null\n")
+    monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
+    allocate_pipe, duplicate = os.pipe, os.dup
+    pipe_fds: list[int] = []
+    duplicate_fds: list[int] = []
+    allocation_error = OSError(errno.EMFILE, "Too many open files")
+
+    def pipe() -> tuple[int, int]:
+        if (failure == "second_pipe" and len(pipe_fds) == 2) or (
+            failure == "cancel_pipe" and duplicate_fds
+        ):
+            raise allocation_error
+        descriptors = allocate_pipe()
+        pipe_fds.extend(descriptors)
+        return descriptors
+
+    def dup(fd: int) -> int:
+        if failure == "second_dup" and duplicate_fds:
+            raise allocation_error
+        descriptor = duplicate(fd)
+        duplicate_fds.append(descriptor)
+        return descriptor
+
+    def temporary_file() -> None:
+        raise allocation_error
+
+    monkeypatch.setattr(os, "pipe", pipe)
+    monkeypatch.setattr(os, "dup", dup)
+    if failure == "stderr_file":
+        monkeypatch.setattr(tempfile, "TemporaryFile", temporary_file)
+
+    leaked: list[int] = []
+    try:
+        with (
+            pytest.raises(OSError) as raised,
+            nokap.Chrome(path=executable, transport="pipe", timeout=1),
+        ):
+            pass
+        assert raised.value is allocation_error
+        for descriptor in set(pipe_fds + duplicate_fds):
+            try:
+                os.fstat(descriptor)
+            except OSError as error:
+                assert error.errno == errno.EBADF
+            else:
+                leaked.append(descriptor)
+        assert leaked == []
+    finally:
+        for descriptor in leaked:
+            os.close(descriptor)
 
 
 def test_port_bind_failure_explains_sandbox(tmp_path):

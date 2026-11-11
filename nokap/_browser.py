@@ -311,13 +311,6 @@ class Chrome:
             raise
 
     def _start_pipe(self, args: list[str]) -> None:
-        chrome_read, self._pipe_write = os.pipe()
-        self._resources.callback(os.close, self._pipe_write)
-        self._pipe_read, chrome_write = os.pipe()
-        self._resources.callback(os.close, self._pipe_read)
-        self._stderr_file = self._resources.enter_context(
-            tempfile.TemporaryFile()  # noqa: SIM115 - ExitStack owns the file.
-        )
         # Map descriptors in a fresh interpreter, not a preexec_fn in the
         # caller's potentially multithreaded process. exec preserves Chrome's PID.
         bootstrap = """
@@ -333,7 +326,16 @@ for fd in {source_read, source_write, read_fd, write_fd} - {3, 4}:
     os.close(fd)
 os.execvp(sys.argv[3], sys.argv[3:])
 """
-        try:
+        with ExitStack() as child_resources:
+            chrome_read, self._pipe_write = os.pipe()
+            child_resources.callback(os.close, chrome_read)
+            self._resources.callback(os.close, self._pipe_write)
+            self._pipe_read, chrome_write = os.pipe()
+            child_resources.callback(os.close, chrome_write)
+            self._resources.callback(os.close, self._pipe_read)
+            self._stderr_file = self._resources.enter_context(
+                tempfile.TemporaryFile()  # noqa: SIM115 - ExitStack owns the file.
+            )
             self._process = subprocess.Popen(
                 [
                     sys.executable,
@@ -347,9 +349,6 @@ os.execvp(sys.argv[3], sys.argv[3:])
                 stdout=subprocess.DEVNULL,
                 stderr=self._stderr_file,
             )
-        finally:
-            os.close(chrome_read)
-            os.close(chrome_write)
 
     def _wait_for_pipe(self, timeout: float) -> None:
         connection = SyncPipeCDP(*self.pipes, timeout=timeout)
