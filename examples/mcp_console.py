@@ -1,16 +1,22 @@
 """Run in an MCP Console Python cell after installing the browser.
 
 On macOS, run `nokap install-chrome` outside the sandbox first. nokap discovers
-the installed headless shell, uses pipes, and retries with --single-process
-if the sandbox denies Mach service registration. Requires great-tables, pandas,
-matplotlib, and this version of nokap in the Console environment.
+the installed headless shell and uses pipes. The tested Console setup also needs
+--single-process because Chrome exits without the Mach-denial diagnostic that
+triggers nokap's retry. Requires great-tables, pandas, matplotlib, and this version
+of nokap in the Console environment.
 """
+
+import os
 
 import matplotlib.pyplot as plt
 import pandas as pd
 from great_tables import GT
 
 import nokap
+
+nokap.close()
+os.environ["NOKAP_CHROME_ARGS"] = "--single-process"
 
 table = (
     GT(
