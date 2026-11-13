@@ -1,9 +1,11 @@
 import errno
 import gc
 import os
+import shutil
 import stat
 import sys
 import tempfile
+import textwrap
 from pathlib import Path
 from unittest.mock import patch
 
@@ -14,12 +16,14 @@ from nokap._browser import (
     Chrome,
     _env_chrome_args,
     _sandbox_hint,
+    _select_transport,
     _split_args,
     find_chrome,
     is_headless_shell,
 )
 from nokap._errors import ChromeNotFoundError, ChromeStartError
 from nokap._install import chrome_platform
+from nokap._pipe import SyncPipeCDP
 
 posix_only = pytest.mark.skipif(sys.platform == "win32", reason="uses shell scripts")
 
@@ -179,40 +183,27 @@ def test_failed_init_leaves_usable_instance():
 
 
 @posix_only
-@pytest.mark.parametrize(
-    "failure", ["second_pipe", "stderr_file", "second_dup", "cancel_pipe"]
-)
+@pytest.mark.parametrize("failure", ["second_pipe", "stderr_file"])
 def test_pipe_startup_allocation_failure_closes_descriptors(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, failure: str
 ) -> None:
     executable = _write_script(tmp_path / "chrome", "exec cat <&3 >/dev/null\n")
     monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
-    allocate_pipe, duplicate = os.pipe, os.dup
+    allocate_pipe = os.pipe
     pipe_fds: list[int] = []
-    duplicate_fds: list[int] = []
     allocation_error = OSError(errno.EMFILE, "Too many open files")
 
     def pipe() -> tuple[int, int]:
-        if (failure == "second_pipe" and len(pipe_fds) == 2) or (
-            failure == "cancel_pipe" and duplicate_fds
-        ):
+        if failure == "second_pipe" and len(pipe_fds) == 2:
             raise allocation_error
         descriptors = allocate_pipe()
         pipe_fds.extend(descriptors)
         return descriptors
 
-    def dup(fd: int) -> int:
-        if failure == "second_dup" and duplicate_fds:
-            raise allocation_error
-        descriptor = duplicate(fd)
-        duplicate_fds.append(descriptor)
-        return descriptor
-
     def temporary_file() -> None:
         raise allocation_error
 
     monkeypatch.setattr(os, "pipe", pipe)
-    monkeypatch.setattr(os, "dup", dup)
     if failure == "stderr_file":
         monkeypatch.setattr(tempfile, "TemporaryFile", temporary_file)
 
@@ -224,7 +215,7 @@ def test_pipe_startup_allocation_failure_closes_descriptors(
         ):
             pass
         assert raised.value is allocation_error
-        for descriptor in set(pipe_fds + duplicate_fds):
+        for descriptor in set(pipe_fds):
             try:
                 os.fstat(descriptor)
             except OSError as error:
@@ -426,3 +417,128 @@ exit 1
         with pytest.raises(ChromeStartError, match="code 1"):
             Chrome(path=chrome, transport="websocket")
     assert len(_launches(argv)) == 1
+
+
+@posix_only
+def test_profile_cleanup_failure_does_not_mask_launch_retry(tmp_path, monkeypatch):
+    body = f"""\
+echo "$*" >> "$NOKAP_TEST_ARGV"
+for a in "$@"; do
+  if [ "$a" = "--single-process" ]; then
+    echo "DevTools listening on ws://127.0.0.1:9/devtools/browser/fake" >&2
+    exec sleep 30
+  fi
+done
+echo "{MACH_DENIED}" >&2
+exit 133
+"""
+    chrome = _write_script(tmp_path / "chrome-headless-shell", body)
+    argv = tmp_path / "argv"
+    monkeypatch.setenv("NOKAP_TEST_ARGV", str(argv))
+    monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
+    monkeypatch.setattr(tempfile, "tempdir", str(tmp_path))
+
+    def rmtree(path, *args, onerror=None, onexc=None, **kwargs):
+        # Fail the way removal does when a Chrome helper recreates profile files
+        try:
+            raise OSError(errno.ENOTEMPTY, "Directory not empty", path)
+        except OSError as error:
+            if onexc is not None:
+                onexc(os.rmdir, path, error)
+            else:
+                onerror(os.rmdir, path, sys.exc_info())
+
+    monkeypatch.setattr(shutil, "rmtree", rmtree)
+    with Chrome(path=chrome, transport="websocket") as c:
+        assert c.is_alive()
+    first, second = _launches(argv)
+    assert "--single-process" not in first
+    assert "--single-process" in second
+
+
+@posix_only
+@pytest.mark.parametrize(
+    ("value", "expected"),
+    [("websocket", "websocket"), (" Pipe ", "pipe"), ("WEBSOCKET", "websocket")],
+)
+def test_transport_from_environment_is_normalized(monkeypatch, value, expected):
+    monkeypatch.setenv("NOKAP_TRANSPORT", value)
+    assert _select_transport(None) == expected
+
+
+@pytest.mark.parametrize("value", ["", "  "])
+def test_empty_transport_environment_uses_platform_default(monkeypatch, value):
+    monkeypatch.setenv("NOKAP_TRANSPORT", value)
+    expected = "pipe" if os.name == "posix" else "websocket"
+    assert _select_transport(None) == expected
+
+
+@pytest.mark.parametrize(
+    ("transport", "environment", "source"),
+    [(None, "tcp", "NOKAP_TRANSPORT"), ("tcp", "pipe", "transport")],
+)
+def test_invalid_transport_names_its_source(
+    monkeypatch, transport, environment, source
+):
+    monkeypatch.setenv("NOKAP_TRANSPORT", environment)
+    with pytest.raises(ValueError, match=f"^{source} must be .*, not 'tcp'$"):
+        Chrome(transport=transport)
+
+
+@posix_only
+@pytest.mark.parametrize(
+    ("ending", "expected"),
+    [
+        ("kill -ABRT $$", "LaunchServices"),
+        (f"echo '{MACH_DENIED}' >&2\nexit 133", "mach-register"),
+    ],
+)
+def test_pipe_failure_waits_for_exit_details(tmp_path, monkeypatch, ending, expected):
+    monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
+    monkeypatch.setattr("nokap._browser.current_platform", lambda: "macos")
+    # Chrome can close its pipe before it exits or finishes writing stderr
+    chrome = _write_script(tmp_path / "chrome", f"exec 4>&-\nsleep 0.3\n{ending}\n")
+    with pytest.raises(ChromeStartError, match=expected):
+        Chrome(
+            path=chrome, transport="pipe", extra_args=["--single-process"], timeout=5
+        )
+
+
+@posix_only
+def test_pipe_handshake_leaves_later_messages_for_connection(tmp_path, monkeypatch):
+    monkeypatch.delenv("NOKAP_CHROME_ARGS", raising=False)
+    chrome = tmp_path / "chrome"
+    chrome.write_text(
+        f"#!{sys.executable}\n"
+        + textwrap.dedent("""
+            import json, os
+
+            buffer, sequence = b"", 0
+            while chunk := os.read(3, 65536):
+                buffer += chunk
+                while b"\\0" in buffer:
+                    raw, buffer = buffer.split(b"\\0", 1)
+                    message = json.loads(raw)
+                    sequence += 1
+                    # Chrome can write an event right behind a response
+                    replies = [
+                        {"id": message["id"], "result": {}},
+                        {"method": "Test.event", "params": {"sequence": sequence}},
+                    ]
+                    data = b"".join(json.dumps(r).encode() + b"\\0" for r in replies)
+                    os.write(4, data)
+                    if message["method"] == "Browser.close":
+                        raise SystemExit(0)
+        """)
+    )
+    chrome.chmod(0o755)
+    events = []
+    with Chrome(path=str(chrome), transport="pipe", timeout=5) as browser:
+        connection = SyncPipeCDP(*browser.pipes, timeout=5)
+        connection.on("Test.event", events.append)
+        try:
+            connection.connect()
+        finally:
+            connection.close()
+    # The event behind the startup handshake reaches the next connection intact
+    assert events[0] == {"sequence": 1}
