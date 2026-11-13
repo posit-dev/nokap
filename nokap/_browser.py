@@ -2,16 +2,16 @@ from __future__ import annotations
 
 import atexit
 import errno
+import json
 import os
 import re
+import selectors
 import shlex
 import shutil
 import subprocess
-import sys
 import tempfile
 import time
-from concurrent.futures import TimeoutError as FutureTimeoutError
-from contextlib import ExitStack
+from contextlib import ExitStack, suppress
 from typing import BinaryIO
 
 from websockets.exceptions import WebSocketException
@@ -19,7 +19,6 @@ from websockets.sync.client import connect
 
 from ._errors import ChromeNotFoundError, ChromeStartError, ConnectionError_
 from ._install import installed_headless_shell
-from ._pipe import SyncPipeCDP
 from ._utils import current_platform, find_open_port
 
 # Seatbelt denies `mach-register`, which multi-process Chrome needs to hand ports to its
@@ -159,6 +158,19 @@ def is_headless_shell(path: str) -> bool:
     return os.path.basename(path).lower().startswith("chrome-headless-shell")
 
 
+def _select_transport(transport: str | None) -> str:
+    """Resolve the DevTools transport from the argument, environment, or platform."""
+    source = "transport" if transport else "NOKAP_TRANSPORT"
+    value = transport or os.environ.get("NOKAP_TRANSPORT", "")
+    # An empty variable counts as unset
+    selected = value.strip().lower() or ("pipe" if os.name == "posix" else "websocket")
+    if selected not in ("websocket", "pipe"):
+        raise ValueError(f"{source} must be 'websocket' or 'pipe', not {value!r}")
+    if selected == "pipe" and os.name != "posix":
+        raise NotImplementedError("Pipe transport currently requires POSIX")
+    return selected
+
+
 def _macos_user_dirs_unavailable() -> bool:
     if current_platform() != "macos":
         return False
@@ -242,14 +254,7 @@ class Chrome:
         self._stderr_file: BinaryIO | None = None
         self._ws_url: str | None = None
         self._ready = False
-        default_transport = "pipe" if os.name == "posix" else "websocket"
-        self._transport = transport or os.environ.get(
-            "NOKAP_TRANSPORT", default_transport
-        )
-        if self._transport not in ("websocket", "pipe"):
-            raise ValueError("NOKAP_TRANSPORT must be 'websocket' or 'pipe'")
-        if self._transport == "pipe" and os.name != "posix":
-            raise NotImplementedError("Pipe transport currently requires POSIX")
+        self._transport = _select_transport(transport)
         self._port: int | None = None
 
         self._path = path or find_chrome()
@@ -293,8 +298,12 @@ class Chrome:
         if not any(
             argument.partition("=")[0] == "--user-data-dir" for argument in args
         ):
+            # Lingering Chrome helpers can hold or recreate profile files. A failed
+            # removal must not mask a launch error or make close() raise.
             profile = self._resources.enter_context(
-                tempfile.TemporaryDirectory(prefix="nokap-chrome-")
+                tempfile.TemporaryDirectory(
+                    prefix="nokap-chrome-", ignore_cleanup_errors=True
+                )
             )
             cmd.append(f"--user-data-dir={profile}")
         cmd.extend([*args, "about:blank"])
@@ -316,21 +325,12 @@ class Chrome:
             raise
 
     def _start_pipe(self, args: list[str]) -> None:
-        # Map descriptors in a fresh interpreter, not a preexec_fn in the
-        # caller's potentially multithreaded process. exec preserves Chrome's PID.
-        bootstrap = """
-import os, sys
-source_read, source_write = int(sys.argv[1]), int(sys.argv[2])
-read_fd, write_fd = os.dup(source_read), os.dup(source_write)
-os.dup2(read_fd, 3)
-os.dup2(write_fd, 4)
-# dup2(fd, fd) preserves its close-on-exec flag.
-os.set_inheritable(3, True)
-os.set_inheritable(4, True)
-for fd in {source_read, source_write, read_fd, write_fd} - {3, 4}:
-    os.close(fd)
-os.execvp(sys.argv[3], sys.argv[3:])
-"""
+        # Popen puts the pipes on stdin/stdout and /bin/sh moves them to fds 3 and 4
+        # before exec, which preserves Chrome's PID. This avoids a preexec_fn in a
+        # potentially multithreaded caller and does not rely on sys.executable,
+        # which frozen or embedded Pythons may not provide. Redirections attached
+        # to exec stay inheritable even in ksh, unlike a bare `exec 3<&0`.
+        remap = 'exec "$0" "$@" 3<&0 4>&1 0</dev/null 1>/dev/null'
         with ExitStack() as child_resources:
             chrome_read, self._pipe_write = os.pipe()
             child_resources.callback(os.close, chrome_read)
@@ -342,38 +342,51 @@ os.execvp(sys.argv[3], sys.argv[3:])
                 tempfile.TemporaryFile()  # noqa: SIM115 - ExitStack owns the file.
             )
             self._process = subprocess.Popen(
-                [
-                    sys.executable,
-                    "-c",
-                    bootstrap,
-                    str(chrome_read),
-                    str(chrome_write),
-                    *args,
-                ],
-                pass_fds=(chrome_read, chrome_write),
-                stdout=subprocess.DEVNULL,
+                ["/bin/sh", "-c", remap, *args],
+                stdin=chrome_read,
+                stdout=chrome_write,
                 stderr=self._stderr_file,
             )
 
     def _wait_for_pipe(self, timeout: float) -> None:
-        connection = SyncPipeCDP(*self.pipes, timeout=timeout)
+        """Wait for Chrome to answer one command over the DevTools pipe."""
+        assert self._process is not None
+        read_fd, write_fd = self.pipes
+        deadline = time.monotonic() + timeout
+        received = bytearray()
         try:
-            connection.connect()
-        except FutureTimeoutError as error:
-            raise ChromeStartError(
-                f"Timed out after {timeout}s waiting for Chrome DevTools pipe",
-                stderr=self.stderr,
-            ) from error
-        except (ConnectionError_, OSError) as error:
-            assert self._process is not None
+            os.write(write_fd, b'{"id":1,"method":"Browser.getVersion"}\0')
+            with selectors.DefaultSelector() as selector:
+                selector.register(read_fd, selectors.EVENT_READ)
+                while True:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0 or not selector.select(remaining):
+                        raise ChromeStartError(
+                            f"Timed out after {timeout}s waiting for Chrome "
+                            "DevTools pipe",
+                            stderr=self.stderr,
+                        )
+                    # Read single bytes so that no part of a later message is
+                    # consumed here; the caller's connection reads everything after.
+                    byte = os.read(read_fd, 1)
+                    if not byte:
+                        raise ConnectionError_("Chrome DevTools pipe closed")
+                    if byte != b"\0":
+                        received += byte
+                    elif json.loads(received).get("id") == 1:
+                        return
+                    else:
+                        received.clear()
+        except (ConnectionError_, OSError, ValueError) as error:
+            # The pipe can close before Chrome exits and finishes writing stderr
+            with suppress(subprocess.TimeoutExpired):
+                self._process.wait(timeout=1)
             stderr = self.stderr
             message = "Chrome DevTools pipe failed to start"
-            hint = _sandbox_hint(self._path, self._process.poll() or 0, stderr)
+            hint = _sandbox_hint(self._path, self._process.returncode or 0, stderr)
             if hint:
                 message += f". {hint}"
             raise ChromeStartError(message, stderr=stderr) from error
-        finally:
-            connection.close()
 
     @property
     def transport(self) -> str:

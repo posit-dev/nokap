@@ -54,12 +54,21 @@ class SyncPipeCDP:
                         chunk = os.read(self._read_fd, 65536)
                         if not chunk:
                             raise ConnectionError_("Chrome DevTools pipe closed")
+                        # Only the new chunk can hold a delimiter; rescanning the
+                        # whole buffer is quadratic for large screenshots.
+                        start = len(buffer)
                         buffer.extend(chunk)
-                        while (end := buffer.find(0)) >= 0:
+                        while (end := buffer.find(0, start)) >= 0:
                             message: dict[str, Any] = json.loads(buffer[:end])
                             del buffer[: end + 1]
+                            start = 0
                             self._dispatch(message)
         except Exception as error:
+            if not isinstance(error, ConnectionError_):
+                # Callers and the default renderer's recovery expect this type
+                wrapped = ConnectionError_(f"Chrome DevTools pipe failed: {error!r}")
+                wrapped.__cause__ = error
+                error = wrapped
             self._fail_pending(error)
 
     def _dispatch(self, message: dict[str, Any]) -> None:
@@ -73,7 +82,9 @@ class SyncPipeCDP:
         if future is not None:
             if "error" in message:
                 error = message["error"]
-                future.set_exception(CDPError(error["message"], error))
+                future.set_exception(
+                    CDPError(error.get("message", "Unknown CDP error"), error)
+                )
             else:
                 future.set_result(message.get("result", {}))
         for callback in callbacks:
@@ -98,7 +109,8 @@ class SyncPipeCDP:
             if self._closed:
                 raise ConnectionError_("Chrome DevTools pipe is closed")
             if self._error is not None:
-                raise self._error
+                # A fresh exception keeps tracebacks from accumulating on one object
+                raise ConnectionError_(str(self._error)) from self._error
             self._cmd_id += 1
             command_id = self._cmd_id
             message: dict[str, Any] = {"id": command_id, "method": method}
@@ -126,7 +138,9 @@ class SyncPipeCDP:
 
     def off(self, event: str, callback: Callable[[dict[str, Any]], None]) -> None:
         with self._lock:
-            self._listeners[event].remove(callback)
+            listeners = self._listeners.get(event, [])
+            if callback in listeners:
+                listeners.remove(callback)
 
     def close(self) -> None:
         if self._closed:
