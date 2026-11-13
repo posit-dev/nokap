@@ -38,6 +38,8 @@ def test_html_image_without_tcp(tmp_path):
 def test_great_tables_image_and_pdf_without_tcp(tmp_path):
     pd = pytest.importorskip("pandas")
     GT = pytest.importorskip("great_tables").GT
+    if not hasattr(GT, "gtsave"):
+        pytest.skip("great_tables release without GT.gtsave()")
 
     table = GT(pd.DataFrame({"Region": ["North", "South"], "Revenue": [1234.5, 9876]}))
     table = table.tab_header(title="Quarterly sales").fmt_currency(columns="Revenue")
