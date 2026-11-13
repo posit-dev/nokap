@@ -324,9 +324,9 @@ def doctor() -> None:
     t0 = time.perf_counter()
     try:
         _ = nokap.webshot.__module__  # Force module load
-        from nokap._api import _get_browser
+        from nokap._api import _get_renderer
 
-        browser = _get_browser()
+        browser = _get_renderer().browser
     except Exception as e:
         click.echo(" FAIL")
         click.echo(f"   {e}")
@@ -338,7 +338,10 @@ def doctor() -> None:
         sys.exit(1)
     elapsed = (time.perf_counter() - t0) * 1000
     click.echo(f" OK ({elapsed:.0f}ms)")
-    click.echo(f"   WebSocket: {browser.ws_url}")
+    if browser.transport == "pipe":
+        click.echo("   Transport: pipe")
+    else:
+        click.echo(f"   WebSocket: {browser.ws_url}")
 
     # Step 3: Test a capture
     import tempfile

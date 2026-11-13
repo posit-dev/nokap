@@ -99,6 +99,31 @@ path = nokap.install_chrome()
 
 The browser goes into nokap's cache directory: `~/Library/Caches/nokap` on macOS, `$XDG_CACHE_HOME/nokap` (or `~/.cache/nokap`) on Linux, and `%LOCALAPPDATA%\nokap\Cache` on Windows. Set `NOKAP_CACHE_DIR` to use a different location. Once installed, nokap uses it automatically unless `CHROME_PATH` is set.
 
+### DevTools Transport
+
+nokap uses pipes by default on macOS and Linux, and WebSockets on Windows. Pipes communicate through inherited file descriptors without opening a local TCP listener. Pipe transport requires POSIX and is not supported on Windows.
+
+Set `NOKAP_TRANSPORT` to `pipe` or `websocket` to override the default. For example, to use WebSockets on macOS or Linux:
+
+```bash
+NOKAP_TRANSPORT=websocket python render.py
+```
+
+An explicit `transport=` argument to `Renderer` or `Chrome` takes precedence over the environment variable. `Chrome.port` and `Chrome.ws_url` are only available with WebSocket transport:
+
+```{python}
+#| eval: false
+import nokap
+
+with nokap.Renderer(transport="websocket") as renderer:
+    print(renderer.browser.port)
+    print(renderer.browser.ws_url)
+```
+
+`Renderer` starts Chrome and reads its environment settings at construction. Later environment changes do not affect that instance. Construct another renderer to use different settings. Module calls without `renderer=` use a shared default; call `nokap.close()` to reset it before changing configuration.
+
+Each browser uses a separate temporary profile by default, with either transport. Supplying `--user-data-dir` selects a profile explicitly.
+
 ### Extra Chrome Arguments
 
 To pass extra command-line flags to every Chrome launch (including the one behind `GT.gtsave()`, which doesn't take browser options), set `NOKAP_CHROME_ARGS`. The value is split like a shell command line:
@@ -107,15 +132,15 @@ To pass extra command-line flags to every Chrome launch (including the one behin
 export NOKAP_CHROME_ARGS="--no-sandbox --lang=de"
 ```
 
-These come after nokap's default flags and before any `extra_args` passed to `Chrome()`.
+These come after nokap's default flags and before any `extra_args` passed to `Renderer()` or `Chrome()`. For example, `Renderer(extra_args=["--lang=de"])` adds a flag for that renderer without changing the environment.
 
 ### Sandboxed Environments
 
 Agent sandboxes on macOS (Seatbelt-based tools such as mcp-console or the Claude Code sandbox) block things Chrome normally relies on. To render inside one:
 
 - **Use chrome-headless-shell.** Full Chrome registers itself with LaunchServices at startup; the sandbox denies that and Chrome aborts (exit code -6, no error output). `chrome-headless-shell` doesn't register, so run `nokap install-chrome` outside the sandbox first.
-- **Allow binding to localhost.** nokap talks to Chrome over a local DevTools port. In mcp-console, set `sandbox.network.allow_local_binding: true`.
-- **Single-process mode is automatic.** The sandbox also denies the mach service registration that multi-process Chrome uses (`bootstrap_check_in ... Permission denied`). When nokap sees that error, it relaunches Chrome once with `--single-process`.
+- **Pipes are the default.** On macOS and Linux, nokap communicates with Chrome through inherited file descriptors without binding a localhost port. No transport setting or change to the sandbox's network permissions is needed.
+- **Single-process mode is automatic.** Before launching Chrome on macOS, nokap checks the user and cache directories required by Chrome's subprocess sandbox. If either lookup fails with an I/O error, nokap uses `--single-process`. If Chrome instead reports a Mach service registration denial (`bootstrap_check_in ... Permission denied`), nokap relaunches it once with `--single-process`.
 
 If a launch still fails, `nokap doctor` shows the error along with a hint about what the sandbox blocked.
 
@@ -158,7 +183,7 @@ print(f"Chrome found at: {path}")
 
 ## Next Steps
 
-nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: two small runtime dependencies and a Chrome installation. Everything else (browser launch, WebSocket connection, tab management) is handled internally.
+nokap is now installed and Chrome is discoverable on your system. The setup is intentionally lightweight: two small runtime dependencies and a Chrome installation. Everything else (browser launch, CDP connection, tab management) is handled internally.
 
 - [Quick Start](02-quick-start.qmd): Take your first screenshot
 

@@ -226,7 +226,7 @@ nokap doctor
 | Step | What happens | Catches |
 |------|-------------|---------|
 | 1. Find Chrome | Locates the Chrome/Chromium binary | Missing install, bad `CHROME_PATH` |
-| 2. Launch Chrome | Starts headless Chrome, connects via WebSocket | Permission errors, port conflicts, sandboxing issues |
+| 2. Launch Chrome | Starts headless Chrome, connects to DevTools | Permission errors, port conflicts, sandboxing issues |
 | 3. Test PNG | Renders HTML and captures a PNG screenshot | Rendering failures, codec issues |
 | 4. Test PDF | Renders HTML and captures an element-bounded PDF | Print-to-PDF failures, paper sizing bugs |
 
@@ -243,12 +243,14 @@ Platform: macos (macOS-14.0-arm64)
    Path: /Applications/Google Chrome.app/Contents/MacOS/Google Chrome
    Type: full browser
 2. Launching headless Chrome... OK (210ms)
-   WebSocket: ws://127.0.0.1:51234/devtools/browser/abc123
+   Transport: pipe
 3. Test capture (HTML → PNG)... OK (320ms, 8.6 KB)
 4. Test capture (HTML → element PDF)... OK (290ms, 7.2 KB)
 
 All checks passed.
 ```
+
+Pipe transport is the default on macOS and Linux. With WebSocket transport, the output shows the DevTools WebSocket URL instead; WebSockets are the default on Windows.
 
 ### When to Use
 

@@ -3,6 +3,8 @@ from __future__ import annotations
 import atexit
 import tempfile
 import time
+from concurrent.futures import TimeoutError as FutureTimeoutError
+from contextlib import ExitStack
 from pathlib import Path
 from typing import Any
 
@@ -10,73 +12,145 @@ from ._browser import Chrome
 from ._cdp import SyncCDP
 from ._errors import ChromeStartError, ConnectionError_
 from ._pdf import capture_element_pdf, capture_pdf
+from ._pipe import SyncPipeCDP
 from ._screenshot import capture_screenshot
 from ._session import Session
 from ._types import PaperSize
 from ._utils import file_url, is_url
 
 __all__ = [
+    "Renderer",
     "webshot",
     "from_html",
     "close",
 ]
 
-# ---------------------------------------------------------------------------
-# Module-level browser singleton
-# ---------------------------------------------------------------------------
 
-_browser: Chrome | None = None
-_cdp: SyncCDP | None = None
+class Renderer:
+    """
+    Own a configured Chrome browser and connection for repeated captures.
 
+    Construction launches Chrome immediately. Options match `Chrome`: `path`
+    selects the executable, `headless` controls headless mode, `extra_args` are
+    appended after NOKAP_CHROME_ARGS, `timeout` bounds browser startup, and
+    `transport` overrides NOKAP_TRANSPORT. Environment settings are read at
+    construction. Pipes are the default on macOS/Linux; Windows uses WebSockets.
+
+    Use as a context manager or call `close()` to release the connection, browser,
+    and temporary profile. Closing is terminal. If the browser exits unexpectedly,
+    create a new renderer. Use separate instances for independent tasks.
+
+    Pass this object to `webshot()` or `from_html()` with `renderer=`, or call its
+    methods. Captures borrow the renderer and close only their own browser tab.
+    """
+
+    def __init__(
+        self,
+        path: str | None = None,
+        *,
+        headless: bool = True,
+        extra_args: list[str] | None = None,
+        timeout: float = 20.0,
+        transport: str | None = None,
+    ) -> None:
+        self._resources = ExitStack()
+        self._closed = False
+        try:
+            self._browser = Chrome(
+                path,
+                headless=headless,
+                extra_args=extra_args,
+                timeout=timeout,
+                transport=transport,
+            )
+            self._resources.callback(self._browser.close)
+            self._cdp: SyncCDP | SyncPipeCDP
+            if self._browser.transport == "pipe":
+                self._cdp = SyncPipeCDP(*self._browser.pipes)
+            else:
+                self._cdp = SyncCDP(self._browser.ws_url)
+            self._resources.callback(self._cdp.close)
+            try:
+                self._cdp.connect()
+            except (ConnectionError_, FutureTimeoutError) as error:
+                if self._browser.transport == "pipe":
+                    raise ChromeStartError(
+                        "Chrome DevTools pipe failed to start",
+                        stderr=self._browser.stderr,
+                    ) from error
+                raise
+        except BaseException:
+            self.close()
+            raise
+        atexit.register(self.close)
+
+    @property
+    def browser(self) -> Chrome:
+        """The owned Chrome process; its lifetime is managed by this renderer."""
+        return self._browser
+
+    def _get_cdp(self) -> SyncCDP | SyncPipeCDP:
+        if self._closed:
+            raise RuntimeError("Renderer is closed; create a new Renderer.")
+        if not self._browser.is_alive():
+            raise ConnectionError_(
+                "Renderer browser is not running; create a new Renderer."
+            )
+        return self._cdp
+
+    def webshot(
+        self, url: str | Path, file: str | Path = "webshot.png", **kwargs: Any
+    ) -> Path:
+        """Capture a page with this renderer. Options match `nokap.webshot()`."""
+        return webshot(url, file, renderer=self, **kwargs)
+
+    def from_html(
+        self, html: str, file: str | Path = "webshot.png", **kwargs: Any
+    ) -> Path:
+        """Capture HTML with this renderer. Options match `nokap.from_html()`."""
+        return from_html(html, file, renderer=self, **kwargs)
+
+    def close(self) -> None:
+        """Close this renderer permanently. Other renderer instances are unaffected."""
+        if self._closed:
+            return
+        self._closed = True
+        atexit.unregister(self.close)
+        self._resources.close()
+
+    def __enter__(self) -> Renderer:
+        self._get_cdp()
+        return self
+
+    def __exit__(self, *_: object) -> None:
+        self.close()
+
+
+# The convenience functions share one renderer. Explicit instances own theirs.
+_renderer: Renderer | None = None
 _MAX_RETRIES = 2
 
 
-def _get_browser() -> Chrome:
-    """Get or create the module-level Chrome browser instance."""
-    global _browser
-    if _browser is None or not _browser.is_alive():
-        # If browser died, also reset the CDP connection
-        global _cdp
-        if _cdp is not None:
-            try:
-                _cdp.close()
-            except Exception:
-                pass
-            _cdp = None
-        _browser = Chrome()
-    return _browser
-
-
-def _get_cdp() -> SyncCDP:
-    """Get or create the module-level CDP connection, with auto-recovery."""
-    global _cdp, _browser
-    browser = _get_browser()
-    if _cdp is None:
-        _cdp = SyncCDP(browser.ws_url)
-        _cdp.connect()
-    return _cdp
+def _get_renderer() -> Renderer:
+    global _renderer
+    if _renderer is not None and not _renderer.browser.is_alive():
+        close()
+    if _renderer is None:
+        _renderer = Renderer()
+    return _renderer
 
 
 def close() -> None:
     """
-    Explicitly close the module-level browser and CDP connection.
+    Close the shared default renderer. Explicit Renderer instances are unaffected.
 
-    Call this when you're done taking screenshots to clean up Chrome processes.
-    If not called, cleanup happens automatically at interpreter exit.
+    A later capture without `renderer=` creates a new default renderer. Cleanup
+    also happens automatically at interpreter exit.
     """
-    global _browser, _cdp
-    if _cdp is not None:
-        try:
-            _cdp.close()
-        except Exception:
-            pass
-        _cdp = None
-    if _browser is not None:
-        try:
-            _browser.close()
-        except Exception:
-            pass
-        _browser = None
+    global _renderer
+    renderer, _renderer = _renderer, None
+    if renderer is not None:
+        renderer.close()
 
 
 atexit.register(close)
@@ -91,6 +165,7 @@ def webshot(
     url: str | Path,
     file: str | Path = "webshot.png",
     *,
+    renderer: Renderer | None = None,
     vwidth: int = 992,
     vheight: int = 744,
     selector: str | list[str] | None = None,
@@ -116,6 +191,9 @@ def webshot(
     file
         Output file path. The format is determined by extension:
         `.png`, `.jpg`/`.jpeg`, `.webp` for images; `.pdf` for PDF.
+    renderer
+        Renderer to borrow for this capture. If None, use the shared default.
+        The caller owns an explicit renderer and is responsible for closing it.
     vwidth
         Viewport width in pixels.
     vheight
@@ -163,20 +241,20 @@ def webshot(
     out_file = Path(file).resolve()
     is_pdf = out_file.suffix.lower() == ".pdf"
 
-    # Get CDP connection and create a session (with retry on connection failure)
-    for attempt in range(_MAX_RETRIES + 1):
+    # Retry only the shared default; an explicit renderer owns one browser lifetime.
+    attempt = 0
+    while True:
         try:
-            cdp = _get_cdp()
+            owner = renderer if renderer is not None else _get_renderer()
+            cdp = owner._get_cdp()
             session = Session(cdp, width=vwidth, height=vheight)
             break
         except (ConnectionError_, ChromeStartError, OSError):
-            if attempt == _MAX_RETRIES:
+            if renderer is not None or attempt == _MAX_RETRIES:
                 raise
             # Connection stale or Chrome slow to start (reset and retry)
             close()
-    else:
-        cdp = _get_cdp()
-        session = Session(cdp, width=vwidth, height=vheight)
+            attempt += 1
 
     try:
         # Set user agent if provided
@@ -238,6 +316,7 @@ def from_html(
     *,
     selector: str = "html",
     encoding: str = "utf-8",
+    renderer: Renderer | None = None,
     **kwargs: Any,
 ) -> Path:
     """
@@ -264,6 +343,9 @@ def from_html(
         rendered at their natural width.
     encoding
         Character encoding for the HTML file.
+    renderer
+        Renderer to borrow for this capture. If None, use the shared default.
+        This function does not close an explicit renderer.
     **kwargs
         Additional arguments passed to `webshot()` (e.g., zoom, expand,
         delay, vwidth, vheight).
@@ -287,7 +369,7 @@ def from_html(
         tmp_path = Path(f.name)
 
     try:
-        return webshot(tmp_path, file, selector=selector, **kwargs)
+        return webshot(tmp_path, file, selector=selector, renderer=renderer, **kwargs)
     finally:
         # Clean up temp file
         try:

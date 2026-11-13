@@ -1,3 +1,8 @@
+import os
+import shlex
+import sys
+from pathlib import Path
+
 import pytest
 
 import nokap
@@ -20,6 +25,60 @@ def cleanup():
     """Ensure browser is closed after each test."""
     yield
     nokap.close()
+
+
+@pytest.mark.parametrize(
+    ("environment", "explicit", "expected"),
+    [
+        (None, None, "websocket" if sys.platform == "win32" else "pipe"),
+        ("websocket", None, "websocket"),
+        ("pipe", "websocket", "websocket"),
+        pytest.param(
+            "pipe",
+            None,
+            "pipe",
+            marks=pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipes"),
+        ),
+        pytest.param(
+            "websocket",
+            "pipe",
+            "pipe",
+            marks=pytest.mark.skipif(sys.platform == "win32", reason="POSIX pipes"),
+        ),
+    ],
+)
+def test_chrome_transport(monkeypatch, environment, explicit, expected):
+    if environment is None:
+        monkeypatch.delenv("NOKAP_TRANSPORT", raising=False)
+    else:
+        monkeypatch.setenv("NOKAP_TRANSPORT", environment)
+    with nokap.Chrome(transport=explicit) as chrome:
+        assert chrome.transport == expected
+        if expected == "websocket":
+            assert chrome.ws_url.startswith(f"ws://127.0.0.1:{chrome.port}/")
+        else:
+            with pytest.raises(RuntimeError, match="no WebSocket URL"):
+                _ = chrome.ws_url
+            with pytest.raises(RuntimeError, match="no debugging port"):
+                _ = chrome.port
+
+
+@pytest.mark.skipif(sys.platform == "win32", reason="POSIX executable fixture")
+@pytest.mark.parametrize("transport", ["websocket", "pipe"])
+def test_chrome_executable_name_on_path(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, transport: str
+) -> None:
+    browser_path = nokap.find_chrome()
+    bin_dir = tmp_path / "browser bin"
+    bin_dir.mkdir()
+    executable = bin_dir / "browser-on-path"
+    executable.write_text(f'#!/bin/sh\nexec {shlex.quote(browser_path)} "$@"\n')
+    executable.chmod(0o755)
+    monkeypatch.setenv("PATH", str(bin_dir), prepend=os.pathsep)
+
+    with nokap.Chrome(path=executable.name, transport=transport) as browser:
+        assert browser.is_alive()
+        assert browser.transport == transport
 
 
 class TestWebshot:

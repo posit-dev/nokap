@@ -34,7 +34,8 @@ browser binary, or you can set `CHROME_PATH`.
 | Full-page PDF | `nokap.webshot(url, "out.pdf")` |
 | Element-bounded PDF | `nokap.webshot(url, "out.pdf", selector="table")` |
 | Capture from HTML to PDF | `nokap.from_html(html_str, "out.pdf", selector="table")` |
-| Clean up browser process | `nokap.close()` |
+| Own a browser for a task | `with nokap.Renderer() as renderer:` |
+| Clean up shared default renderer | `nokap.close()` |
 | CLI screenshot | `nokap webshot URL file.png` |
 | CLI from HTML file | `nokap from-html file.html out.png` |
 | Check Chrome availability | `nokap doctor` or `nokap info` |
@@ -57,16 +58,22 @@ Key parameters:
 - `delay`: Seconds to wait after page load (default: 0.2)
 - `vwidth` / `vheight`: Viewport dimensions (default: 992×744)
 - `useragent`: Custom User-Agent string
+- `renderer`: Borrow an existing `Renderer` without closing it
 
 ### `from_html(html, file, *, selector="html", encoding="utf-8", **kwargs)`
 
 Render an HTML string to image or PDF. Writes HTML to a temp file and calls
 `webshot()`. Accepts all `webshot()` keyword arguments.
 
+### `Renderer(path=None, *, headless=True, extra_args=None, timeout=20, transport=None)`
+
+Starts Chrome and connects immediately. Reuse its `webshot()` and `from_html()` methods, or pass it as `renderer=` to module functions. `renderer.browser` exposes the underlying `Chrome`. Browser environment settings are read at construction; use separate instances for independent tasks or settings.
+
+Use a context manager or call `renderer.close()` to close its browser and connection. Closing is repeat-safe and final. A closed renderer or one whose browser has exited raises on capture; construct a new renderer to continue.
+
 ### `close()`
 
-Explicitly close the module-level browser. Called automatically at exit, but
-use this in long-running processes or after batch captures.
+Close the shared default renderer used by module calls without `renderer=`. Explicit instances are unaffected. Called automatically at process exit.
 
 ## Gotchas
 
@@ -74,7 +81,7 @@ use this in long-running processes or after batch captures.
 2. `selector` and `cliprect` are mutually exclusive: never pass both.
 3. `zoom` only affects raster images (PNG/JPEG/WebP), not PDF output. PDFs are vector and always sharp.
 4. `from_html()` defaults to `selector="html"` (full document), while `webshot()` defaults to `selector=None` (viewport only).
-5. The browser singleton auto-starts on first call. Call `nokap.close()` to free resources in long-running scripts.
+5. Module calls without `renderer=` create a shared default on first use, and replace it after it is closed or its browser exits. Explicit renderers do not restart their browser.
 6. Local file paths are auto-converted to `file://` URLs: no manual conversion needed.
 7. `expand` uses CSS pixel units and applies padding around the selector bounding box.
 8. For wide elements (tables), nokap auto-detects intrinsic width and widens the viewport to avoid clipping.

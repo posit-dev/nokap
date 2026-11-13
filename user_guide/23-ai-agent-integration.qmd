@@ -124,7 +124,7 @@ Checks system readiness. It takes no parameters. It returns the browser's path a
 
 ### Running Inside an Agent Sandbox
 
-Coding agents often run commands inside an OS sandbox. On macOS, full Chrome can't start there, so install `chrome-headless-shell` with `nokap install-chrome` and allow the sandbox to bind localhost ports. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments) for the details.
+Coding agents often run commands inside an OS sandbox. On macOS, full Chrome can't start there, so install `chrome-headless-shell` with `nokap install-chrome` outside the sandbox. nokap uses pipes by default on macOS and Linux, without a localhost listener. See [Sandboxed Environments](01-installation.qmd#sandboxed-environments) for the details.
 
 ### Prompts
 
@@ -141,6 +141,55 @@ The MCP server also provides prompt templates for common workflows:
 |-----|-------------|
 | `nokap://capabilities` | JSON summary of supported formats, paper sizes, and features |
 
+## MCP Console
+
+[MCP Console](https://github.com/posit-dev/mcp-console) can run Great Tables in its sandbox and return the rendered table as an MCP image through its existing matplotlib support.
+
+On macOS, use the separate [Chrome headless shell](https://developer.chrome.com/docs/automation-and-testing/headless-chrome-shell). The regular Chrome application still needs desktop services when started with `--headless`. Install headless shell outside the sandbox:
+
+```bash
+nokap install-chrome
+```
+
+nokap discovers the installed headless shell and uses pipes automatically. Before launching Chrome on macOS, it checks the user and cache directories required by Chrome's subprocess sandbox. If either lookup fails with an I/O error, nokap uses `--single-process`. It also retries once with that flag when Chrome reports a Mach service registration denial. `CHROME_PATH` can select a different browser installation.
+
+Console's filesystem and network restrictions still apply. Automatic transport and single-process selection were verified in MCP Console's macOS sandbox with `chrome-headless-shell` 157.0.8103.50. Pipe transport requires POSIX and is not supported on Windows.
+
+With `great-tables`, `pandas`, and `matplotlib` available in the Python session, render the table's HTML using an explicitly owned renderer:
+
+```{python}
+#| eval: false
+import matplotlib.pyplot as plt
+import pandas as pd
+from great_tables import GT
+
+import nokap
+
+table = GT(pd.DataFrame({"Region": ["North", "South"], "Revenue": [18240, 15750]}))
+table = table.tab_header(title="Quarterly sales").fmt_currency(columns="Revenue")
+with nokap.Renderer() as renderer:
+    nokap.from_html(
+        table.as_raw_html(),
+        "table.png",
+        selector="table",
+        expand=5,
+        zoom=2,
+        renderer=renderer,
+    )
+
+pixels = plt.imread("table.png")
+height, width = pixels.shape[:2]
+figure = plt.figure(figsize=(width / 100, height / 100), dpi=100)
+figure.figimage(pixels)
+plt.show()
+```
+
+Console captures the figure and returns an `image/png` content item to the MCP client. Evaluating a `GT` or Pillow image object alone does not trigger that capture. The figure above adds no axes and preserves the rendered table's dimensions.
+
+`nokap.from_html()` borrows the renderer; leaving the `with` block closes it. Keep multiple captures inside the block to reuse the browser. `GT.gtsave()` remains available when the shared default renderer is sufficient; it does not accept a `renderer=` argument.
+
+A complete example is available in [`examples/mcp_console.py`](../examples/mcp_console.py).
+
 ## Agent Skills
 
 nokap publishes [agent skills](https://agentskills.io/), which are structured context files that tell AI coding agents how to use the package correctly. Skills are complementary to the MCP server: while MCP lets agents *call* nokap tools directly, skills help agents write *better nokap code* for you.
@@ -148,7 +197,7 @@ nokap publishes [agent skills](https://agentskills.io/), which are structured co
 ### Installing Skills
 
 If you use nokap in a project and want your AI agent to have context about it:
- 
+
 ```bash
 # Auto-detect your agent and install
 great-docs skill install nokap
